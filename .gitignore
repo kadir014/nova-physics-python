@@ -1,3 +1,10 @@
+# Project stuff
+*.pyd
+*.prof
+*test.py
+build/
+.vscode/
+
 # Prerequisites
 *.d
 
