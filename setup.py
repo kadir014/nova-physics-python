@@ -36,7 +36,7 @@ INCLUDE_PATH = NOVA_PATH / "include"
 def download_latest():
     """ Download the latest Nova Physics release. """
     response = urllib.request.urlopen(
-        f"https://github.com/kadir014/nova-physics/releases/latest/download/nova-physics-{LATEST_NOVA}-devel.tar.gz"
+        f"https://github.com/kadir014/nova-physics/archive/refs/heads/main.tar.gz"
     )
 
     data = response.read()
@@ -49,7 +49,8 @@ def download_latest():
 def get_version() -> str:
     """ Get Nova Physics version number. """
 
-    with open(INCLUDE_PATH / "novaphysics" / "novaphysics.h", "r") as header_file:
+    #with open(INCLUDE_PATH / "novaphysics" / "novaphysics.h", "r") as header_file:
+    with open(BASE_PATH.parent / "nova-physics" / "include" / "novaphysics" / "novaphysics.h", "r") as header_file:
         content = header_file.readlines()
         MAJOR, MINOR, PATCH = 0, 0, 0
 
@@ -75,23 +76,26 @@ def get_sources() -> list[str]:
             if name.endswith(".c"):
                 source_files.append(str(BASE_PATH / "src" / name))
 
+    for *_, files in os.walk(BASE_PATH.parent / "nova-physics" / "src"):
+        for name in files:
+            if name.endswith(".c"):
+                source_files.append(str(BASE_PATH.parent / "nova-physics" / "src" / name))
+
     return source_files
 
+# Remove build directory
+if os.path.exists(BUILD_PATH):
+    shutil.rmtree(BUILD_PATH)
 
-if False:
-    # Remove build directory
-    if os.path.exists(BUILD_PATH):
-        shutil.rmtree(BUILD_PATH)
 
-    # Download latest Nova Physics release
-    download_latest()
+# Download latest Nova Physics release
+download_latest()
 
 
 extension = Extension(
     name = "nova",
     sources = get_sources(),
-    library_dirs = [str(NOVA_PATH / "lib" / "x86_64")],
-    include_dirs = [str(INCLUDE_PATH), str(BASE_PATH / "src")],
+    include_dirs = [str(INCLUDE_PATH), str(BASE_PATH.parent / "nova-physics" / "include"), str(BASE_PATH / "src")],
 )
 
 setup(
@@ -105,5 +109,6 @@ setup(
 # Python 3.10 -> lib.win-amd64-3.10        / nova.cp310-win_amd64.pyd
 # Python 3.11 -> lib.win-amd64-cpython-311 / nova.cp311-win_amd64.pyd
 
-#shutil.copyfile(BASE_PATH / "build" / "lib.win-amd64-3.10" / "nova.cp310-win_amd64.pyd", BASE_PATH / "nova.pyd")
+# Copy extension build to working directory as "nova.pyd"
+shutil.copyfile(BASE_PATH / "build" / "lib.win-amd64-3.10" / "nova.cp310-win_amd64.pyd", BASE_PATH / "nova.pyd")
 #shutil.copyfile(BASE_PATH / "build" / "lib.win-amd64-cpython-311" / "nova.cp311-win_amd64.pyd", BASE_PATH / "nova.pyd")
