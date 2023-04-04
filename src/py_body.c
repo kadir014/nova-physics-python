@@ -8,40 +8,15 @@
 
 */
 
-#ifndef NV_PYTHON_BODY_H
-#define NV_PYTHON_BODY_H
-
-#include <Python.h>
-#include "structmember.h"
-#include "novaphysics/novaphysics.h"
-#include "py_vector2.h"
+#include "api.h"
 
 
-/**
- * Body object interface
- */
-typedef struct {
-    PyObject_HEAD
-    nv_Body *body;
-    nv_BodyType type;
-    int shape;
-    nv_Vector2Object *position;
-    double angle;
-    double radius;
-} nv_BodyObject;
-
-/**
- * Body object deallocater
- */
 static void nv_BodyObject_dealloc(nv_BodyObject *self) {
     // Don't free nv_Body instance because space frees it
     Py_XDECREF(self->position);
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
-/**
- * Body object initializer
- */
 static int nv_BodyObject_init(
     nv_BodyObject *self,
     PyObject *args,
@@ -107,7 +82,7 @@ static int nv_BodyObject_init(
             type,
             NV_VEC2(x, y),
             angle,
-            nv_Material_BASIC,
+            (nv_Material){1.0, 0.0, 0.0},
             radius
         );
     }
@@ -117,7 +92,7 @@ static int nv_BodyObject_init(
             type,
             NV_VEC2(x, y),
             angle,
-            nv_Material_BASIC,
+            (nv_Material){1.0, 0.0, 0.0},
             new_vertices
         );
     }
@@ -162,10 +137,6 @@ static PyMemberDef nv_BodyObject_members[] = {
     {NULL} // Sentinel
 };
 
-/**
- * Body.get_vertices() method
- * Returns transformed vertices of the body
-*/
 static PyObject *nv_BodyObject_get_vertices(
     nv_BodyObject *self,
     PyObject *Py_UNUSED(ignored)
@@ -184,10 +155,6 @@ static PyObject *nv_BodyObject_get_vertices(
     return return_tup;
 }
 
-/**
- * Body.apply_force() method
- * Applies force to center of body
-*/
 static PyObject *nv_BodyObject_apply_force(
     nv_BodyObject *self,
     PyObject *args
@@ -221,10 +188,7 @@ static PyMethodDef nv_BodyObject_methods[] = {
     {NULL} // Sentinel
 };
 
-/**
- * Body type internals
- */
-static PyTypeObject nv_BodyObjectType = {
+PyTypeObject nv_BodyObjectType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "nova.Body",
     .tp_doc = "Body object",
@@ -239,7 +203,7 @@ static PyTypeObject nv_BodyObjectType = {
 };
 
 
-static PyObject *nv_create_circle(PyObject *self, PyObject *args) {
+PyObject *nv_create_circle(PyObject *self, PyObject *args) {
     nv_BodyType type;
     double x;
     double y;
@@ -258,7 +222,7 @@ static PyObject *nv_create_circle(PyObject *self, PyObject *args) {
     return (PyObject *)obj;
 }
 
-static PyObject *nv_create_rect(PyObject *self, PyObject *args) {
+PyObject *nv_create_rect(PyObject *self, PyObject *args) {
     nv_BodyType type;
     double x;
     double y;
@@ -282,6 +246,3 @@ static PyObject *nv_create_rect(PyObject *self, PyObject *args) {
     Py_DECREF(inst_args);
     return (PyObject *)obj;
 }
-
-
-#endif

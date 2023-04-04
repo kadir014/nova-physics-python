@@ -8,26 +8,9 @@
 
 */
 
-#ifndef NV_PYTHON_SPACE_H
-#define NV_PYTHON_SPACE_H
-
-#include <Python.h>
-#include "novaphysics/novaphysics.h"
-#include "py_body.h"
+#include "api.h"
 
 
-/**
- * Space object interface
- */
-typedef struct {
-    PyObject_HEAD
-    nv_Space *space;
-    nv_Array *body_objects;
-} nv_SpaceObject;
-
-/**
- * Space object deallocater
- */
 static void nv_SpaceObject_dealloc(nv_SpaceObject *self) {
     nv_Space_free(self->space);
 
@@ -42,9 +25,6 @@ static void nv_SpaceObject_dealloc(nv_SpaceObject *self) {
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
-/**
- * Space object initializer
- */
 static int nv_SpaceObject_init(
     nv_SpaceObject *self,
     PyObject *args,
@@ -56,9 +36,7 @@ static int nv_SpaceObject_init(
     return 0;
 }
 
-/**
- * Space.step() method
- */
+
 static PyObject *nv_SpaceObject_step(
     nv_SpaceObject *self,
     PyObject *args
@@ -102,10 +80,6 @@ static PyObject *nv_SpaceObject_step(
     Py_RETURN_NONE;
 }
 
-/**
- * Space.get_bodies() method
- * Returns nv_Space instance's bodies array as a Python tuple
- */
 static PyObject *nv_SpaceObject_get_bodies(
     nv_SpaceObject *self,
     PyObject *Py_UNUSED(ignored)
@@ -163,10 +137,7 @@ static PyMethodDef nv_SpaceObject_methods[] = {
     {NULL} // Sentinel
 };
 
-/**
- * Space type internals
- */
-static PyTypeObject nv_SpaceType = {
+PyTypeObject nv_SpaceType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "nova.Space",
     .tp_doc = "Space object",
@@ -178,6 +149,3 @@ static PyTypeObject nv_SpaceType = {
     .tp_init = (initproc)nv_SpaceObject_init,
     .tp_methods = nv_SpaceObject_methods
 };
-
-
-#endif

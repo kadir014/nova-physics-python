@@ -10,10 +10,7 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include "novaphysics/novaphysics.h"
-#include "py_space.h"
-#include "py_body.h"
-#include "py_vector2.h"
+#include "api.h"
 
 
 /**
