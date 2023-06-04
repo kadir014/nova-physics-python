@@ -188,7 +188,7 @@ static PyMethodDef nv_BodyObject_methods[] = {
     {NULL} // Sentinel
 };
 
-PyTypeObject nv_BodyObjectType = {
+static PyTypeObject nv_BodyObjectType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "nova.Body",
     .tp_doc = "Body object",

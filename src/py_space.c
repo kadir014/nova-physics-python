@@ -137,7 +137,7 @@ static PyMethodDef nv_SpaceObject_methods[] = {
     {NULL} // Sentinel
 };
 
-PyTypeObject nv_SpaceType = {
+static PyTypeObject nv_SpaceType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "nova.Space",
     .tp_doc = "Space object",

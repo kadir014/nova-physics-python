@@ -126,7 +126,7 @@ static PyMemberDef nv_Vector2Object_members[] = {
 /**
  * Vector2 object type internals
  */
-PyTypeObject nv_Vector2ObjectType = {
+static PyTypeObject nv_Vector2ObjectType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "nova.Vector2",
     .tp_doc = "Vector2 object",
