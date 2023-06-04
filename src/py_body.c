@@ -34,7 +34,7 @@ static int nv_BodyObject_init(
         args, "iidddd|O",
         &type, &shape, &x, &y, &angle, &radius, &vertices
     ))
-        return NULL;
+        return -1;
 
     self->type = type;
     self->shape = shape;
