@@ -33,7 +33,7 @@ static int nv_Vector2Object_init(
     double y;
 
     if (!PyArg_ParseTuple(args, "dd", &x, &y))
-        return NULL;
+        return -1;
 
     self->x = x;
     self->y = y;
@@ -98,10 +98,10 @@ static PyObject *nv_Vector2Object___truediv__(
  * Vector2 object operator overloadings
  */
 static PyNumberMethods nv_Vector2Object_operators = {
-    .nb_add =         nv_Vector2Object___add__,
-    .nb_subtract =    nv_Vector2Object___sub__,
-    .nb_multiply =    nv_Vector2Object___mul__,
-    .nb_true_divide = nv_Vector2Object___truediv__
+    .nb_add =         (binaryfunc)nv_Vector2Object___add__,
+    .nb_subtract =    (binaryfunc)nv_Vector2Object___sub__,
+    .nb_multiply =    (binaryfunc)nv_Vector2Object___mul__,
+    .nb_true_divide = (binaryfunc)nv_Vector2Object___truediv__
 };
 
 /**
