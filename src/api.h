@@ -42,7 +42,7 @@ nv_Vector2Object *nv_Vector2Object_new(double x, double y);
 /**
  * Vector2 objec type internals
  */
-PyTypeObject nv_Vector2ObjectType;
+static PyTypeObject nv_Vector2ObjectType;
 
 /**
  * Vector2 object deallocater
@@ -99,7 +99,7 @@ typedef struct {
 /**
  * Body object type internals
  */
-PyTypeObject nv_BodyObjectType;
+static PyTypeObject nv_BodyObjectType;
 
 /**
  * Body object deallocater
@@ -154,7 +154,7 @@ typedef struct {
 /**
  * Space object type internals
  */
-PyTypeObject nv_SpaceType;
+static PyTypeObject nv_SpaceType;
 
 /**
  * Space object deallocater
