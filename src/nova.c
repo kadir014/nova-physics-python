@@ -215,12 +215,14 @@ static int nv_BodyObject_init(
     double x;
     double y;
     double angle;
+    double restitution;
+    double friction;
     double radius;
     PyObject *vertices = NULL;
 
     if (!PyArg_ParseTuple(
-        args, "iidddd|O",
-        &type, &shape, &x, &y, &angle, &radius, &vertices
+        args, "iidddddd|O",
+        &type, &shape, &x, &y, &angle, &restitution, &friction, &radius, &vertices
     ))
         return -1;
 
@@ -270,7 +272,7 @@ static int nv_BodyObject_init(
             type,
             NV_VEC2(x, y),
             angle,
-            (nv_Material){1.0, 0.0, 0.0},
+            (nv_Material){1.0, restitution, friction},
             radius
         );
     }
@@ -280,7 +282,7 @@ static int nv_BodyObject_init(
             type,
             NV_VEC2(x, y),
             angle,
-            (nv_Material){1.0, 0.0, 0.0},
+            (nv_Material){1.0, restitution, friction},
             new_vertices
         );
     }
@@ -396,15 +398,17 @@ PyObject *nv_create_circle(PyObject *self, PyObject *args) {
     double x;
     double y;
     double angle;
+    double restitution;
+    double friction;
     double radius;
 
     if (!PyArg_ParseTuple(
-        args, "idddd",
-        &type, &x, &y, &angle, &radius
+        args, "idddddd",
+        &type, &x, &y, &angle, &restitution, &friction, &radius
     ))
         return NULL;
 
-    PyObject *inst_args = Py_BuildValue("iidddd", type, 0, x, y, angle, radius);
+    PyObject *inst_args = Py_BuildValue("iidddddd", type, 0, x, y, angle, restitution, friction, radius);
     nv_BodyObject *obj = (nv_BodyObject *)PyObject_CallObject((PyObject *)&nv_BodyObjectType, inst_args);
     Py_DECREF(inst_args);
     return (PyObject *)obj;
@@ -415,19 +419,21 @@ PyObject *nv_create_rect(PyObject *self, PyObject *args) {
     double x;
     double y;
     double angle;
+    double restitution;
+    double friction;
     double width;
     double height;
 
     if (!PyArg_ParseTuple(
-        args, "iddddd",
-        &type, &x, &y, &angle, &width, &height
+        args, "iddddddd",
+        &type, &x, &y, &angle, &restitution, &friction, &width, &height
     ))
         return NULL;
 
     double w = width / 2.0;
     double h = height / 2.0;
 
-    PyObject *inst_args = Py_BuildValue("iidddd((dd)(dd)(dd)(dd))", type, 1, x, y, angle, 0.0,
+    PyObject *inst_args = Py_BuildValue("iidddddd((dd)(dd)(dd)(dd))", type, 1, x, y, angle, restitution, friction, 0.0,
         -w, -h, w, -h, w, h, -w, h);
 
     nv_BodyObject *obj = (nv_BodyObject *)PyObject_CallObject((PyObject *)&nv_BodyObjectType, inst_args);
