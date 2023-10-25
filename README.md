@@ -21,8 +21,10 @@ space = nova.Space()
 # Create a body with box shape
 body = nova.Rect(
     nova.DYNAMIC,      # Type of the body
-    nova.Vector2(0, 0) # Initial position of the body
-    0,                 # Initial rotation of the body
+    nova.Vector2(0, 0) # Initial position
+    0,                 # Initial rotation
+    0.1,               # Restitution
+    0.35,              # Friction
     5, 5               # Width & height of the rect shape
 )
 
@@ -32,13 +34,13 @@ space.add(body)
 # Main loop
 while True:
     # Advance the simulation with the timestep of 60 times a second.
-    space.step(1 / 60)
+    space.step(1 / 60, 10, 10, 1, 1)
 ```
 
 
 
 # Requirements
-- [Python](https://www.python.org/downloads/) (3.8+)
+- [Python](https://www.python.org/downloads/) (3.9+)
 - [Nova Physics](https://github.com/kadir014/nova-physics) (Prebuilt in the PyPI release)
 - [Setuptools](https://pypi.org/project/setuptools/) (Should be included by default)
 
