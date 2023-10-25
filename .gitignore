@@ -2,6 +2,8 @@
 *.pyd
 *.prof
 *test.py
+test_*
+assets/
 build/
 .vscode/
 *.png

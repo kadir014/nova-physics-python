@@ -5,6 +5,13 @@
 
 
 
+/*  #######################################################
+
+                          Vector2
+
+    #######################################################  */
+
+
 /**
  * Vector2 object interface
  */
@@ -35,6 +42,7 @@ typedef struct {
     nv_Vector2Object *position;
     double angle;
     double radius;
+    nv_uint16 id;
 } nv_BodyObject;
 
 /**
@@ -127,7 +135,7 @@ static PyObject *nv_Vector2Object___mul__(
 ) {
     double s = PyFloat_AS_DOUBLE(scalar);
 
-    nv_Vector2 result = nv_Vector2_muls(PY_TO_VEC2(self), s);
+    nv_Vector2 result = nv_Vector2_mul(PY_TO_VEC2(self), s);
 
     return nv_Vector2Object_new(result.x, result.y);
 }
@@ -138,7 +146,7 @@ static PyObject *nv_Vector2Object___truediv__(
 ) {
     double s = PyFloat_AS_DOUBLE(scalar);
 
-    nv_Vector2 result = nv_Vector2_divs(PY_TO_VEC2(self), s);
+    nv_Vector2 result = nv_Vector2_div(PY_TO_VEC2(self), s);
 
     return nv_Vector2Object_new(result.x, result.y);
 }
@@ -196,6 +204,14 @@ nv_Vector2Object *nv_Vector2Object_new(double x, double y) {
     Py_INCREF(obj);
     return obj;
 }
+
+
+
+/*  #######################################################
+
+                             Body
+
+    #######################################################  */
 
 
 
@@ -287,6 +303,9 @@ static int nv_BodyObject_init(
         );
     }
 
+    // Actual ID is assigned at adding to space
+    self->id = 0;
+
     return 0;
 }
 
@@ -324,6 +343,12 @@ static PyMemberDef nv_BodyObject_members[] = {
         "Radius"
     },
 
+    {
+        "id",
+        T_INT, offsetof(nv_BodyObject, id), 0,
+        "Unique identity number of the body"
+    },
+
     {NULL} // Sentinel
 };
 
@@ -359,6 +384,27 @@ static PyObject *nv_BodyObject_apply_force(
     Py_RETURN_NONE;
 }
 
+static PyObject *nv_BodyObject_set_inertia(
+    nv_BodyObject *self,
+    PyObject *args
+) {
+    double inertia;
+
+    if (!PyArg_ParseTuple(args, "d", &inertia))
+        return NULL;
+
+    if (inertia == 0.0) {
+        self->body->inertia = 0.0;
+        self->body->invinertia = 0.0;
+    }
+    else {
+        self->body->inertia = inertia;
+        self->body->invinertia = 1.0 / inertia;
+    }
+
+    Py_RETURN_NONE;
+}
+
 /**
  * Body object method interface
  */
@@ -373,6 +419,12 @@ static PyMethodDef nv_BodyObject_methods[] = {
         "apply_force",
         (PyCFunction)nv_BodyObject_apply_force, METH_VARARGS,
         "Apply force at body center of mass"
+    },
+
+    {
+        "set_inertia",
+        (PyCFunction)nv_BodyObject_set_inertia, METH_VARARGS,
+        "Set inertia of the body"
     },
 
     {NULL} // Sentinel
@@ -443,6 +495,14 @@ PyObject *nv_create_rect(PyObject *self, PyObject *args) {
 
 
 
+/*  #######################################################
+
+                            Space
+
+    #######################################################  */
+
+
+
 static void nv_SpaceObject_dealloc(nv_SpaceObject *self) {
     nv_Space_free(self->space);
 
@@ -467,7 +527,6 @@ static int nv_SpaceObject_init(
 
     return 0;
 }
-
 
 static PyObject *nv_SpaceObject_step(
     nv_SpaceObject *self,
@@ -538,8 +597,47 @@ static PyObject *nv_SpaceObject_add(
         return NULL;
 
     nv_Space_add(self->space, body->body);
+    body->id = body->body->id;
     Py_INCREF(body);
     nv_Array_add(self->body_objects, body);
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *nv_SpaceObject_clear(
+    nv_SpaceObject *self,
+    PyObject *Py_UNUSED(ignored)
+) {
+    while (self->body_objects->size > 0) {
+        nv_BodyObject *body_obj = (nv_BodyObject *)nv_Array_pop(self->body_objects, 0);
+        Py_DECREF(body_obj);
+    }
+
+    nv_Space_clear(self->space);
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *nv_SpaceObject_set_shg(
+    nv_SpaceObject *self,
+    PyObject *args
+) {
+    double min_x;
+    double min_y;
+    double max_x;
+    double max_y;
+    double cell_width;
+    double cell_height;
+
+    if (!PyArg_ParseTuple(args, "dddddd", &min_x, &min_y, &max_x, &max_y, &cell_width, &cell_height))
+        return NULL;
+
+    nv_Space_set_SHG(
+        self->space,
+        (nv_AABB){min_x, min_y, max_x, max_y},
+        cell_width,
+        cell_height
+    );
 
     Py_RETURN_NONE;
 }
@@ -566,6 +664,18 @@ static PyMethodDef nv_SpaceObject_methods[] = {
         "Add body to space"
     },
 
+    {
+        "clear",
+        (PyCFunction)nv_SpaceObject_clear, METH_NOARGS,
+        "Clear space"
+    },
+
+    {
+        "set_shg",
+        (PyCFunction)nv_SpaceObject_set_shg, METH_VARARGS,
+        "Set SHG"
+    },
+
     {NULL} // Sentinel
 };
 
@@ -581,6 +691,14 @@ PyTypeObject nv_SpaceType = {
     .tp_init = (initproc)nv_SpaceObject_init,
     .tp_methods = nv_SpaceObject_methods
 };
+
+
+
+/*  #######################################################
+
+                          Module
+
+    #######################################################  */
 
 
 
@@ -664,7 +782,9 @@ PyMODINIT_FUNC PyInit_nova() {
         return NULL;
     }
 
-    /* Add constants */
+    /* Add module constants */
+
+    PyModule_AddStringConstant(m, "NOVA_VERSION", NV_VERSTR);
 
     PyModule_AddIntConstant(m, "STATIC",  nv_BodyType_STATIC);
     PyModule_AddIntConstant(m, "DYNAMIC", nv_BodyType_DYNAMIC);

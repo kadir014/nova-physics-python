@@ -23,18 +23,15 @@ from pathlib import Path
 from setuptools import setup, Extension
 
 
-# Latest Nova Physics release version, don't forget to update this
-LATEST_NOVA = "0.4.0"
-
-
 BASE_PATH = Path(os.getcwd())
 BUILD_PATH = BASE_PATH / "build"
-NOVA_PATH = BUILD_PATH / "nova-physics"
-INCLUDE_PATH = NOVA_PATH / "include"
+NOVA_PATH = BUILD_PATH / "nova-physics" / "nova-physics-main"
 
 
 def download_latest():
     """ Download the latest Nova Physics release. """
+    print("Downloading latest release...")
+
     response = urllib.request.urlopen(
         f"https://github.com/kadir014/nova-physics/archive/refs/heads/main.tar.gz"
     )
@@ -43,14 +40,15 @@ def download_latest():
 
     # Extract release archive
     with tarfile.open(mode="r:gz", fileobj=io.BytesIO(data)) as tar:
-        tar.extractall(NOVA_PATH)
+        tar.extractall(BUILD_PATH / "nova-physics")
+
+    print("Downloaded and extracted latest release.")
 
 
 def get_version() -> str:
     """ Get Nova Physics version number. """
 
-    #with open(INCLUDE_PATH / "novaphysics" / "novaphysics.h", "r") as header_file:
-    with open(BASE_PATH.parent / "nova-physics" / "include" / "novaphysics" / "novaphysics.h", "r") as header_file:
+    with open(NOVA_PATH / "include" / "novaphysics" / "novaphysics.h", "r") as header_file:
         content = header_file.readlines()
         MAJOR, MINOR, PATCH = 0, 0, 0
 
@@ -76,12 +74,13 @@ def get_sources() -> list[str]:
             if name.endswith(".c"):
                 source_files.append(str(BASE_PATH / "src" / name))
 
-    for *_, files in os.walk(BASE_PATH.parent / "nova-physics" / "src"):
+    for *_, files in os.walk(NOVA_PATH / "src"):
         for name in files:
             if name.endswith(".c"):
-                source_files.append(str(BASE_PATH.parent / "nova-physics" / "src" / name))
+                source_files.append(str(NOVA_PATH / "src" / name))
 
     return source_files
+
 
 # Remove build directory
 if os.path.exists(BUILD_PATH):
@@ -95,7 +94,7 @@ download_latest()
 extension = Extension(
     name = "nova",
     sources = get_sources(),
-    include_dirs = [str(INCLUDE_PATH), str(BASE_PATH.parent / "nova-physics" / "include"), str(BASE_PATH / "src")],
+    include_dirs = [str(NOVA_PATH / "include"), str(BASE_PATH / "src")],
 )
 
 setup(
@@ -110,5 +109,8 @@ setup(
 # Python 3.11 -> lib.win-amd64-cpython-311 / nova.cp311-win_amd64.pyd
 
 # Copy extension build to working directory as "nova.pyd"
-#shutil.copyfile(BASE_PATH / "build" / "lib.win-amd64-cpython-310" / "nova.cp310-win_amd64.pyd", BASE_PATH / "nova.pyd")
+if os.path.exists(BASE_PATH / "nova.pyd"):
+    os.remove(BASE_PATH / "nova.pyd")
+    
+shutil.copyfile(BASE_PATH / "build" / "lib.win-amd64-cpython-310" / "nova.cp310-win_amd64.pyd", BASE_PATH / "nova.pyd")
 #shutil.copyfile(BASE_PATH / "build" / "lib.win-amd64-cpython-311" / "nova.cp311-win_amd64.pyd", BASE_PATH / "nova.pyd")

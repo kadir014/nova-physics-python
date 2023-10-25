@@ -1,6 +1,8 @@
 from typing import overload, Tuple
 
 
+NOVA_VERSION: str
+
 STATIC: int
 DYNAMIC: int
 
@@ -35,6 +37,9 @@ class Space:
     @overload
     def get_bodies(self) -> Tuple["Body"]: ...
 
+    @overload
+    def set_shg(self, min_x: float, min_y: float, max_x: float, max_y: float, cell_width: float, cell_height: float) -> None: ...
+
 
 class Body:
     type: int
@@ -42,6 +47,7 @@ class Body:
     position: Vector2
     angle: float
     radius: float
+    id: int
 
     @overload
     def __init__(self, type: int, shape: int, x: float, y: float, angle: float, radius: float) -> None: ...
@@ -52,9 +58,12 @@ class Body:
     @overload
     def apply_force(self, force: Vector2) -> None: ...
 
+    @overload
+    def set_inertia(self, inertia: float) -> None: ...
+
 
 @overload
-def create_circle(type: int, x: float, y: float, angle: float, radius: float) -> Body: ...
+def create_circle(type: int, x: float, y: float, angle: float, restitution: float, friction: float, radius: float) -> Body: ...
 
 @overload
-def create_rect(type: int, x: float, y: float, angle: float, width: float, height: float) -> Body: ...
+def create_rect(type: int, x: float, y: float, angle: float, restitution: float, friction: float, width: float, height: float) -> Body: ...
