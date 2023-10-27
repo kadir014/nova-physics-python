@@ -7,6 +7,7 @@ assets/
 build/
 .vscode/
 *.png
+setup2.py
 
 # Prerequisites
 *.d

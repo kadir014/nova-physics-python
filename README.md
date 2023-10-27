@@ -40,7 +40,7 @@ while True:
 
 
 # Requirements
-- [Python](https://www.python.org/downloads/) (3.9+)
+- [Python](https://www.python.org/downloads/) (3.8+)
 - [Nova Physics](https://github.com/kadir014/nova-physics) (Prebuilt in the PyPI release)
 - [Setuptools](https://pypi.org/project/setuptools/) (Should be included by default)
 

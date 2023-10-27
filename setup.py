@@ -15,12 +15,19 @@
 """
 
 import os
+import platform
 import shutil
 import io
 import tarfile
 import urllib.request
 from pathlib import Path
 from setuptools import setup, Extension
+
+
+if platform.system() == "Darwin":
+    # Fuck OSX
+    import ssl
+    ssl._create_default_https_context = ssl._create_unverified_context
 
 
 BASE_PATH = Path(os.getcwd())

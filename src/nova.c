@@ -4,6 +4,8 @@
 #include "novaphysics/novaphysics.h"
 
 
+#define NOVA_PYTHON_VERSION "0.0.1"
+
 
 /*  #######################################################
 
@@ -231,14 +233,15 @@ static int nv_BodyObject_init(
     double x;
     double y;
     double angle;
+    double density;
     double restitution;
     double friction;
     double radius;
     PyObject *vertices = NULL;
 
     if (!PyArg_ParseTuple(
-        args, "iidddddd|O",
-        &type, &shape, &x, &y, &angle, &restitution, &friction, &radius, &vertices
+        args, "iiddddddd|O",
+        &type, &shape, &x, &y, &angle, &density, &restitution, &friction, &radius, &vertices
     ))
         return -1;
 
@@ -288,7 +291,7 @@ static int nv_BodyObject_init(
             type,
             NV_VEC2(x, y),
             angle,
-            (nv_Material){1.0, restitution, friction},
+            (nv_Material){density, restitution, friction},
             radius
         );
     }
@@ -298,7 +301,7 @@ static int nv_BodyObject_init(
             type,
             NV_VEC2(x, y),
             angle,
-            (nv_Material){1.0, restitution, friction},
+            (nv_Material){density, restitution, friction},
             new_vertices
         );
     }
@@ -359,13 +362,27 @@ static PyObject *nv_BodyObject_get_vertices(
     nv_Polygon_model_to_world(self->body);
     PyObject *return_tup = PyTuple_New(self->body->shape->trans_vertices->size);
 
-    PyObject *vertex_tup;
-
     for (size_t i = 0; i < self->body->shape->trans_vertices->size; i++) {
         nv_Vector2 v = NV_TO_VEC2(self->body->shape->trans_vertices->data[i]);
 
         PyTuple_SET_ITEM(return_tup, i, (PyObject *)nv_Vector2Object_new(v.x, v.y));
     }
+
+    return return_tup;
+}
+
+static PyObject *nv_BodyObject_get_aabb(
+    nv_BodyObject *self,
+    PyObject *Py_UNUSED(ignored)
+) {
+    PyObject *return_tup = PyTuple_New(4);
+
+    nv_AABB aabb = nv_Body_get_aabb(self->body);
+
+    PyTuple_SET_ITEM(return_tup, 0, PyFloat_FromDouble(aabb.min_x));
+    PyTuple_SET_ITEM(return_tup, 1, PyFloat_FromDouble(aabb.min_y));
+    PyTuple_SET_ITEM(return_tup, 2, PyFloat_FromDouble(aabb.max_x));
+    PyTuple_SET_ITEM(return_tup, 3, PyFloat_FromDouble(aabb.max_y));
 
     return return_tup;
 }
@@ -384,6 +401,57 @@ static PyObject *nv_BodyObject_apply_force(
     Py_RETURN_NONE;
 }
 
+static PyObject *nv_BodyObject_apply_force_at(
+    nv_BodyObject *self,
+    PyObject *args
+) {
+    nv_Vector2Object *force;
+    nv_Vector2Object *position;
+
+    if (!PyArg_ParseTuple(args, "O!O!", &nv_Vector2ObjectType, &force, &nv_Vector2ObjectType, &position))
+        return NULL;
+
+    nv_Body_apply_force_at(self->body, NV_VEC2(force->x, force->y), NV_VEC2(position->x, position->y));
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *nv_BodyObject_apply_impulse(
+    nv_BodyObject *self,
+    PyObject *args
+) {
+    nv_Vector2Object *force;
+    nv_Vector2Object *position;
+
+    if (!PyArg_ParseTuple(args, "O!O!", &nv_Vector2ObjectType, &force, &nv_Vector2ObjectType, &position))
+        return NULL;
+
+    nv_Body_apply_impulse(self->body, NV_VEC2(force->x, force->y), NV_VEC2(position->x, position->y));
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *nv_BodyObject_set_mass(
+    nv_BodyObject *self,
+    PyObject *args
+) {
+    double mass;
+
+    if (!PyArg_ParseTuple(args, "d", &mass))
+        return NULL;
+
+    nv_Body_set_mass(self->body, mass);
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *nv_BodyObject_get_mass(
+    nv_BodyObject *self,
+    PyObject *Py_UNUSED(ignored)
+) {
+    return PyFloat_FromDouble(self->body->mass);
+}
+
 static PyObject *nv_BodyObject_set_inertia(
     nv_BodyObject *self,
     PyObject *args
@@ -393,16 +461,16 @@ static PyObject *nv_BodyObject_set_inertia(
     if (!PyArg_ParseTuple(args, "d", &inertia))
         return NULL;
 
-    if (inertia == 0.0) {
-        self->body->inertia = 0.0;
-        self->body->invinertia = 0.0;
-    }
-    else {
-        self->body->inertia = inertia;
-        self->body->invinertia = 1.0 / inertia;
-    }
+    nv_Body_set_inertia(self->body, inertia);
 
     Py_RETURN_NONE;
+}
+
+static PyObject *nv_BodyObject_get_inertia(
+    nv_BodyObject *self,
+    PyObject *Py_UNUSED(ignored)
+) {
+    return PyFloat_FromDouble(self->body->inertia);
 }
 
 /**
@@ -416,15 +484,51 @@ static PyMethodDef nv_BodyObject_methods[] = {
     },
 
     {
+        "get_aabb",
+        (PyCFunction)nv_BodyObject_get_aabb, METH_NOARGS,
+        "Get AABB of the body (minX, minY, maxX, maxY)"
+    },
+
+    {
         "apply_force",
         (PyCFunction)nv_BodyObject_apply_force, METH_VARARGS,
         "Apply force at body center of mass"
     },
 
     {
+        "apply_force_at",
+        (PyCFunction)nv_BodyObject_apply_force_at, METH_VARARGS,
+        "Apply force at some local point"
+    },
+
+    {
+        "apply_impulse",
+        (PyCFunction)nv_BodyObject_apply_impulse, METH_VARARGS,
+        "Apply impulse at some local point"
+    },
+
+    {
+        "set_mass",
+        (PyCFunction)nv_BodyObject_set_mass, METH_VARARGS,
+        "Set mass of the body"
+    },
+
+    {
+        "get_mass",
+        (PyCFunction)nv_BodyObject_get_mass, METH_NOARGS,
+        "Get mass of the body"
+    },
+
+    {
         "set_inertia",
         (PyCFunction)nv_BodyObject_set_inertia, METH_VARARGS,
         "Set inertia of the body"
+    },
+
+    {
+        "get_inerttia",
+        (PyCFunction)nv_BodyObject_get_inertia, METH_NOARGS,
+        "Get inertia of the body"
     },
 
     {NULL} // Sentinel
@@ -450,17 +554,18 @@ PyObject *nv_create_circle(PyObject *self, PyObject *args) {
     double x;
     double y;
     double angle;
+    double density;
     double restitution;
     double friction;
     double radius;
 
     if (!PyArg_ParseTuple(
-        args, "idddddd",
-        &type, &x, &y, &angle, &restitution, &friction, &radius
+        args, "iddddddd",
+        &type, &x, &y, &angle, &density, &restitution, &friction, &radius
     ))
         return NULL;
 
-    PyObject *inst_args = Py_BuildValue("iidddddd", type, 0, x, y, angle, restitution, friction, radius);
+    PyObject *inst_args = Py_BuildValue("iiddddddd", type, 0, x, y, angle, density, restitution, friction, radius);
     nv_BodyObject *obj = (nv_BodyObject *)PyObject_CallObject((PyObject *)&nv_BodyObjectType, inst_args);
     Py_DECREF(inst_args);
     return (PyObject *)obj;
@@ -471,21 +576,22 @@ PyObject *nv_create_rect(PyObject *self, PyObject *args) {
     double x;
     double y;
     double angle;
+    double density;
     double restitution;
     double friction;
     double width;
     double height;
 
     if (!PyArg_ParseTuple(
-        args, "iddddddd",
-        &type, &x, &y, &angle, &restitution, &friction, &width, &height
+        args, "idddddddd",
+        &type, &x, &y, &angle, &density, &restitution, &friction, &width, &height
     ))
         return NULL;
 
     double w = width / 2.0;
     double h = height / 2.0;
 
-    PyObject *inst_args = Py_BuildValue("iidddddd((dd)(dd)(dd)(dd))", type, 1, x, y, angle, restitution, friction, 0.0,
+    PyObject *inst_args = Py_BuildValue("iiddddddd((dd)(dd)(dd)(dd))", type, 1, x, y, angle, density, restitution, friction, 0.0,
         -w, -h, w, -h, w, h, -w, h);
 
     nv_BodyObject *obj = (nv_BodyObject *)PyObject_CallObject((PyObject *)&nv_BodyObjectType, inst_args);
@@ -604,6 +710,22 @@ static PyObject *nv_SpaceObject_add(
     Py_RETURN_NONE;
 }
 
+static PyObject *nv_SpaceObject_remove(
+    nv_SpaceObject *self,
+    PyObject *args
+) {
+    nv_BodyObject *body;
+
+    if (!PyArg_ParseTuple(args, "O!", &nv_BodyObjectType, &body))
+        return NULL;
+
+    nv_Space_remove(self->space, body->body);
+    nv_Array_remove(self->body_objects, body);
+    Py_XDECREF(body);
+
+    Py_RETURN_NONE;
+}
+
 static PyObject *nv_SpaceObject_clear(
     nv_SpaceObject *self,
     PyObject *Py_UNUSED(ignored)
@@ -662,6 +784,12 @@ static PyMethodDef nv_SpaceObject_methods[] = {
         "add",
         (PyCFunction)nv_SpaceObject_add, METH_VARARGS,
         "Add body to space"
+    },
+
+    {
+        "remove",
+        (PyCFunction)nv_SpaceObject_remove, METH_VARARGS,
+        "Remove body from space"
     },
 
     {
@@ -784,7 +912,8 @@ PyMODINIT_FUNC PyInit_nova() {
 
     /* Add module constants */
 
-    PyModule_AddStringConstant(m, "NOVA_VERSION", NV_VERSTR);
+    PyModule_AddStringConstant(m, "nova_version", NV_VERSTR);
+    PyModule_AddStringConstant(m, "version", NOVA_PYTHON_VERSION);
 
     PyModule_AddIntConstant(m, "STATIC",  nv_BodyType_STATIC);
     PyModule_AddIntConstant(m, "DYNAMIC", nv_BodyType_DYNAMIC);

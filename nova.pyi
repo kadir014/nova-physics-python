@@ -1,7 +1,8 @@
 from typing import overload, Tuple
 
 
-NOVA_VERSION: str
+nova_version: str
+version: str
 
 STATIC: int
 DYNAMIC: int
@@ -35,6 +36,9 @@ class Space:
     def add(self, body: "Body") -> None: ...
 
     @overload
+    def remove(self, body: "Body") -> None: ...
+
+    @overload
     def get_bodies(self) -> Tuple["Body"]: ...
 
     @overload
@@ -50,20 +54,38 @@ class Body:
     id: int
 
     @overload
-    def __init__(self, type: int, shape: int, x: float, y: float, angle: float, radius: float) -> None: ...
+    def __init__(self, type: int, shape: int, x: float, y: float, angle: float, density: float, restitution: float, friction: float, radius: float) -> None: ...
 
     @overload
     def get_vertices(self) -> Tuple[float]: ...
 
     @overload
+    def get_aabb(self) -> Tuple[float, float, float, float]: ...
+
+    @overload
     def apply_force(self, force: Vector2) -> None: ...
+
+    @overload
+    def apply_force_at(self, force: Vector2, position: Vector2) -> None: ...
+
+    @overload
+    def apply_impulse(self, force: Vector2, position: Vector2) -> None: ...
+
+    @overload
+    def set_mass(self, mass: float) -> None: ...
+
+    @overload
+    def get_mass(self) -> float: ...
 
     @overload
     def set_inertia(self, inertia: float) -> None: ...
 
+    @overload
+    def get_inertia(self) -> float: ...
+
 
 @overload
-def create_circle(type: int, x: float, y: float, angle: float, restitution: float, friction: float, radius: float) -> Body: ...
+def create_circle(type: int, x: float, y: float, angle: float, density: float, restitution: float, friction: float, radius: float) -> Body: ...
 
 @overload
-def create_rect(type: int, x: float, y: float, angle: float, restitution: float, friction: float, width: float, height: float) -> Body: ...
+def create_rect(type: int, x: float, y: float, angle: float, density: float, restitution: float, friction: float, width: float, height: float) -> Body: ...
