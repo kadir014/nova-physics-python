@@ -5,9 +5,11 @@ This binding aims to provide a Pythonic API while keeping everything as similar 
 
 
 # Installation
+The module is not on PyPI yet, you have to build it on your own using:
 ```
-pip install nova
+python setup.py build
 ```
+It will automatically download the latest Nova Physics release.
 
 
 
@@ -15,7 +17,7 @@ pip install nova
 ```py
 import nova
 
-# Create the space
+# Create the space instance
 space = nova.Space()
 
 # Create a body with box shape
@@ -34,15 +36,20 @@ space.add(body)
 # Main loop
 while True:
     # Advance the simulation with the timestep of 60 times a second.
-    space.step(1 / 60, 10, 10, 1, 1)
+    space.step(
+        1 / 60, # Timestep (delta time)
+        10, # Velocity iterations
+        10, # Position iterations
+        5, # Constraint iterations
+        1 # Substeps
+    )
 ```
 
 
 
 # Requirements
-- [Python](https://www.python.org/downloads/) (3.8+)
-- [Nova Physics](https://github.com/kadir014/nova-physics) (Prebuilt in the PyPI release)
-- [Setuptools](https://pypi.org/project/setuptools/) (Should be included by default)
+- [Python](https://www.python.org/downloads/) (3.9+)
+- [Setuptools](https://pypi.org/project/setuptools/)
 
 
 

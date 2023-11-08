@@ -8,6 +8,7 @@ build/
 .vscode/
 *.png
 setup2.py
+nova_playground.py
 
 # Prerequisites
 *.d

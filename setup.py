@@ -1,5 +1,4 @@
 """
-
     This file is a part of the Python binding of the
     Nova Physics Engine project and distributed under the MIT license.
 
@@ -12,12 +11,19 @@
     This Python script is used to build Python binding
     of the Nova Physics Engine.
 
+    Download the latest release and build the module:
+    $ python setup.py build
+
+    Download the latest commit and build the module:
+    $ python setup.py build --nightly
 """
 
+import sys
 import os
 import platform
 import shutil
 import io
+import json
 import tarfile
 import urllib.request
 from pathlib import Path
@@ -32,12 +38,46 @@ if platform.system() == "Darwin":
 
 BASE_PATH = Path(os.getcwd())
 BUILD_PATH = BASE_PATH / "build"
-NOVA_PATH = BUILD_PATH / "nova-physics" / "nova-physics-main"
+NOVA_PATH = BUILD_PATH / "nova-physics"
 
 
 def download_latest():
     """ Download the latest Nova Physics release. """
+
+    print("Getting latest release...")
+
+    response = urllib.request.urlopen(
+        f"https://api.github.com/repos/kadir014/nova-physics/releases/latest"
+    )
+
+    release_data = json.loads(response.read())
+    version = release_data["name"]
+    release_url = release_data["tarball_url"]
+
+    print(f"Gathered latest version: {version}.")
     print("Downloading latest release...")
+
+    response = urllib.request.urlopen(release_url)
+
+    data = response.read()
+
+    # Extract release archive
+    with tarfile.open(name="anan", mode="r:gz", fileobj=io.BytesIO(data)) as tar:
+        base_dir = tar.getnames()[0]
+        tar.extractall(BUILD_PATH)
+
+    os.replace(BUILD_PATH / base_dir, NOVA_PATH)
+
+    shutil.rmtree(BUILD_PATH / base_dir, True)
+
+    print("Downloaded and extracted latest release.")
+
+
+def download_nightly():
+    """ Download the latest Nova Physics commit. """
+    # TODO: Rename nova-physics-main to nova-physics
+
+    print("Downloading latest commit...")
 
     response = urllib.request.urlopen(
         f"https://github.com/kadir014/nova-physics/archive/refs/heads/main.tar.gz"
@@ -47,9 +87,11 @@ def download_latest():
 
     # Extract release archive
     with tarfile.open(mode="r:gz", fileobj=io.BytesIO(data)) as tar:
-        tar.extractall(BUILD_PATH / "nova-physics")
+        tar.extractall(BUILD_PATH)
 
-    print("Downloaded and extracted latest release.")
+    os.rename(BUILD_PATH / "nova-physics-main", BUILD_PATH / "nova-physics")
+
+    print("Downloaded and extracted commit.")
 
 
 def get_version() -> str:
@@ -57,19 +99,19 @@ def get_version() -> str:
 
     with open(NOVA_PATH / "include" / "novaphysics" / "novaphysics.h", "r") as header_file:
         content = header_file.readlines()
-        MAJOR, MINOR, PATCH = 0, 0, 0
+        major, minor, patch = 0, 0, 0
 
         for line in content:
             if line.startswith("#define NV_VERSION_MAJOR"):
-                MAJOR = int(line[24:].strip())
+                major = int(line[24:].strip())
 
             elif line.startswith("#define NV_VERSION_MINOR"):
-                MINOR = int(line[24:].strip())
+                minor = int(line[24:].strip())
 
             elif line.startswith("#define NV_VERSION_PATCH"):
-                PATCH = int(line[24:].strip())
+                patch = int(line[24:].strip())
         
-    return f"{MAJOR}.{MINOR}.{PATCH}"
+    return f"{major}.{minor}.{patch}"
 
 
 def get_sources() -> list[str]:
@@ -94,8 +136,11 @@ if os.path.exists(BUILD_PATH):
     shutil.rmtree(BUILD_PATH)
 
 
-# Download latest Nova Physics release
-download_latest()
+# Download latest or nightly Nova Physics release
+if "--nightly" in sys.argv:
+    download_nightly()
+else:
+    download_latest()
 
 
 extension = Extension(
@@ -115,9 +160,12 @@ setup(
 # Python 3.10 -> lib.win-amd64-3.10        / nova.cp310-win_amd64.pyd
 # Python 3.11 -> lib.win-amd64-cpython-311 / nova.cp311-win_amd64.pyd
 
+print("Moving the compiled module as nova.pyd to working directory.")
+
 # Copy extension build to working directory as "nova.pyd"
 if os.path.exists(BASE_PATH / "nova.pyd"):
     os.remove(BASE_PATH / "nova.pyd")
-    
+
 shutil.copyfile(BASE_PATH / "build" / "lib.win-amd64-cpython-310" / "nova.cp310-win_amd64.pyd", BASE_PATH / "nova.pyd")
-#shutil.copyfile(BASE_PATH / "build" / "lib.win-amd64-cpython-311" / "nova.cp311-win_amd64.pyd", BASE_PATH / "nova.pyd")
+
+print("Moved succesfully.")
