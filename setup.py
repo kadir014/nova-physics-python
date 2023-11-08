@@ -36,6 +36,12 @@ if platform.system() == "Darwin":
     ssl._create_default_https_context = ssl._create_unverified_context
 
 
+DOWNLOAD_NIGHTLY = False
+if "--nightly" in sys.argv:
+    DOWNLOAD_NIGHTLY = True
+    sys.argv.remove("--nightly") # Do not mess with setuptools
+
+
 BASE_PATH = Path(os.getcwd())
 BUILD_PATH = BASE_PATH / "build"
 NOVA_PATH = BUILD_PATH / "nova-physics"
@@ -61,8 +67,7 @@ def download_latest():
 
     data = response.read()
 
-    # Extract release archive
-    with tarfile.open(name="anan", mode="r:gz", fileobj=io.BytesIO(data)) as tar:
+    with tarfile.open(mode="r:gz", fileobj=io.BytesIO(data)) as tar:
         base_dir = tar.getnames()[0]
         tar.extractall(BUILD_PATH)
 
@@ -85,7 +90,6 @@ def download_nightly():
 
     data = response.read()
 
-    # Extract release archive
     with tarfile.open(mode="r:gz", fileobj=io.BytesIO(data)) as tar:
         tar.extractall(BUILD_PATH)
 
@@ -137,16 +141,22 @@ if os.path.exists(BUILD_PATH):
 
 
 # Download latest or nightly Nova Physics release
-if "--nightly" in sys.argv:
+
+if DOWNLOAD_NIGHTLY:
     download_nightly()
 else:
     download_latest()
 
 
+libraries = []
+if platform.system() == "Windows":
+    libraries.append("winmm") # For profiler
+
 extension = Extension(
     name = "nova",
     sources = get_sources(),
     include_dirs = [str(NOVA_PATH / "include"), str(BASE_PATH / "src")],
+    libraries = libraries
 )
 
 setup(
