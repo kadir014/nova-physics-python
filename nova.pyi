@@ -57,6 +57,9 @@ class Body:
     def __init__(self, type: int, shape: int, x: float, y: float, angle: float, density: float, restitution: float, friction: float, radius: float) -> None: ...
 
     @overload
+    def __repr__(self) -> str: ...
+
+    @overload
     def get_vertices(self) -> tuple[float]: ...
 
     @overload
@@ -82,6 +85,12 @@ class Body:
 
     @overload
     def get_inertia(self) -> float: ...
+
+    @overload
+    def set_position(self, position: Vector2) -> None: ...
+
+    @overload
+    def set_collision(self, collide: bool) -> None: ...
 
 
 @overload

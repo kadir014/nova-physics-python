@@ -79,25 +79,10 @@ static int nv_Vector2Object_init(
     return 0;
 }
 
-static PyObject *nv_Vector2Object___add__(
-    nv_Vector2Object *self,
-    nv_Vector2Object *vector
-);
 
-static PyObject *nv_Vector2Object___sub__(
-    nv_Vector2Object *self,
-    nv_Vector2Object *vector
-);
-
-static PyObject *nv_Vector2Object___mul__(
-    nv_Vector2Object *self,
-    PyObject *scalar
-);
-
-static PyObject *nv_Vector2Object___truediv__(
-    nv_Vector2Object *self,
-    PyObject *scalar
-);
+static PyObject *nv_Vector2Object___repr__(nv_Vector2Object* self) {
+    return PyUnicode_FromFormat("<Vector2(%g, %g)>", self->x, self->y);
+}
 
 
 /**
@@ -105,8 +90,8 @@ static PyObject *nv_Vector2Object___truediv__(
  */
 static PyMethodDef nv_Vector2Object_methods[] = {
     {
-        "__add__",
-        (PyCFunction)nv_Vector2Object___add__, METH_VARARGS,
+        "__repr__",
+        (PyCFunction)nv_Vector2Object___repr__, METH_NOARGS,
         ""
     },
 
@@ -196,7 +181,8 @@ PyTypeObject nv_Vector2ObjectType = {
     .tp_dealloc = (destructor)nv_Vector2Object_dealloc,
     .tp_init = (initproc)nv_Vector2Object_init,
     .tp_members = nv_Vector2Object_members,
-    .tp_as_number = &nv_Vector2Object_operators
+    .tp_as_number = &nv_Vector2Object_operators,
+    .tp_str = nv_Vector2Object___repr__
 };
 
 nv_Vector2Object *nv_Vector2Object_new(double x, double y) {
@@ -473,6 +459,36 @@ static PyObject *nv_BodyObject_get_inertia(
     return PyFloat_FromDouble(self->body->inertia);
 }
 
+static PyObject *nv_BodyObject_set_position(
+    nv_BodyObject *self,
+    PyObject *args
+) {
+    nv_Vector2Object *position;
+
+    if (!PyArg_ParseTuple(args, "O!", &nv_Vector2ObjectType, &position))
+        return NULL;
+
+    self->body->position = NV_VEC2(position->x, position->y);
+    self->position->x = self->body->position.x;
+    self->position->y = self->body->position.y; 
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *nv_BodyObject_set_collision(
+    nv_BodyObject *self,
+    PyObject *args
+) {
+    unsigned char collision;
+
+    if (!PyArg_ParseTuple(args, "b", &collision))
+        return NULL;
+
+    self->body->collision = collision;
+
+    Py_RETURN_NONE;
+}
+
 /**
  * Body object method interface
  */
@@ -526,9 +542,21 @@ static PyMethodDef nv_BodyObject_methods[] = {
     },
 
     {
-        "get_inerttia",
+        "get_inertia",
         (PyCFunction)nv_BodyObject_get_inertia, METH_NOARGS,
         "Get inertia of the body"
+    },
+
+    {
+        "set_position",
+        (PyCFunction)nv_BodyObject_set_position, METH_VARARGS,
+        "Set position of the body"
+    },
+
+    {
+        "set_collision",
+        (PyCFunction)nv_BodyObject_set_collision, METH_VARARGS,
+        "Set collision of the body"
     },
 
     {NULL} // Sentinel
@@ -669,9 +697,11 @@ static PyObject *nv_SpaceObject_step(
         Py_INCREF(body_object);
         
         body_object->position->x = body->position.x;
-        body_object->position->y = body->position.y; 
-        body_object->angle = body->angle; 
-        body_object->radius = body->shape->radius; 
+        body_object->position->y = body->position.y;
+        body_object->angle = body->angle;
+        body_object->radius = body->shape->radius;
+
+        Py_DECREF(body_object);
     }
 
     Py_RETURN_NONE;
