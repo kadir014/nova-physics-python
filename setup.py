@@ -26,6 +26,7 @@ import io
 import json
 import tarfile
 import urllib.request
+from time import time
 from pathlib import Path
 from setuptools import setup, Extension
 
@@ -135,47 +136,52 @@ def get_sources() -> list[str]:
     return source_files
 
 
-# Remove build directory
-if os.path.exists(BUILD_PATH):
-    shutil.rmtree(BUILD_PATH)
+if __name__ == "__main__":
+    start = time()
+
+    # Remove build directory
+    if os.path.exists(BUILD_PATH):
+        shutil.rmtree(BUILD_PATH)
 
 
-# Download latest or nightly Nova Physics release
+    # Download latest or nightly Nova Physics release
 
-if DOWNLOAD_NIGHTLY:
-    download_nightly()
-else:
-    download_latest()
-
-
-libraries = []
-if platform.system() == "Windows":
-    libraries.append("winmm") # For profiler
-
-extension = Extension(
-    name = "nova",
-    sources = get_sources(),
-    include_dirs = [str(NOVA_PATH / "include"), str(BASE_PATH / "src")],
-    libraries = libraries
-)
-
-setup(
-    name = "nova",
-    version = get_version(),
-    description = "Nova Physics Engine",
-    ext_modules = [extension]
-)
+    if DOWNLOAD_NIGHTLY:
+        download_nightly()
+    else:
+        download_latest()
 
 
-# Python 3.10 -> lib.win-amd64-3.10        / nova.cp310-win_amd64.pyd
-# Python 3.11 -> lib.win-amd64-cpython-311 / nova.cp311-win_amd64.pyd
+    libraries = []
+    if platform.system() == "Windows":
+        libraries.append("winmm") # For profiler
 
-print("Moving the compiled module as nova.pyd to working directory.")
+    extension = Extension(
+        name = "nova",
+        sources = get_sources(),
+        include_dirs = [str(NOVA_PATH / "include"), str(BASE_PATH / "src")],
+        libraries = libraries
+    )
 
-# Copy extension build to working directory as "nova.pyd"
-if os.path.exists(BASE_PATH / "nova.pyd"):
-    os.remove(BASE_PATH / "nova.pyd")
+    setup(
+        name = "nova",
+        version = get_version(),
+        description = "Nova Physics Engine",
+        ext_modules = [extension]
+    )
 
-shutil.copyfile(BASE_PATH / "build" / "lib.win-amd64-cpython-310" / "nova.cp310-win_amd64.pyd", BASE_PATH / "nova.pyd")
 
-print("Moved succesfully.")
+    # Python 3.10 -> lib.win-amd64-3.10        / nova.cp310-win_amd64.pyd
+    # Python 3.11 -> lib.win-amd64-cpython-311 / nova.cp311-win_amd64.pyd
+
+    print("Moving the compiled module as nova.pyd to working directory.")
+
+    # Copy extension build to working directory as "nova.pyd"
+    if os.path.exists(BASE_PATH / "nova.pyd"):
+        os.remove(BASE_PATH / "nova.pyd")
+
+    shutil.copyfile(BASE_PATH / "build" / "lib.win-amd64-cpython-310" / "nova.cp310-win_amd64.pyd", BASE_PATH / "nova.pyd")
+
+    print("Moved succesfully.")
+    print()
+    print(f"Succesfully built Nova in {round(time() - start, 2)}s.")
