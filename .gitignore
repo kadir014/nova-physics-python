@@ -9,9 +9,12 @@ build/
 *.png
 setup2.py
 nova_playground.py
+nova_playground.zip
 utils.py
 settings.cfg
 __pycache__/
+archive.py
+keybinds.py
 
 # Prerequisites
 *.d

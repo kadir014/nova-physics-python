@@ -1,4 +1,4 @@
-from typing import overload
+from typing import overload, Union
 
 
 nova_version: str
@@ -36,6 +36,9 @@ class Space:
     def add(self, body: "Body") -> None: ...
 
     @overload
+    def add_constraint(self, constraint: Union["DistanceJoint", "HingeJoint"]) -> None: ...
+
+    @overload
     def remove(self, body: "Body") -> None: ...
 
     @overload
@@ -43,6 +46,12 @@ class Space:
 
     @overload
     def set_shg(self, min_x: float, min_y: float, max_x: float, max_y: float, cell_width: float, cell_height: float) -> None: ...
+
+    @overload
+    def get_shg(self) -> tuple[float, float, float, float, float, float]: ...
+
+    @overload
+    def set_kill_bounds(self, min_x: float, min_y: float, max_x: float, max_y: float) -> None: ...
 
 
 class Body:
@@ -98,3 +107,13 @@ def create_circle(type: int, x: float, y: float, angle: float, density: float, r
 
 @overload
 def create_rect(type: int, x: float, y: float, angle: float, density: float, restitution: float, friction: float, width: float, height: float) -> Body: ...
+
+
+class DistanceJoint:
+    length: float
+
+    @overload
+    def __init__(self, a: Body, b: Body, anchor_a: Vector2, anchor_b: Vector2, length: float) -> None: ...
+
+
+class HingeJoint: ...
