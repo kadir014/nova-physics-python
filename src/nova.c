@@ -203,7 +203,7 @@ PyTypeObject nv_Vector2ObjectType = {
     .tp_init = (initproc)nv_Vector2Object_init,
     .tp_members = nv_Vector2Object_members,
     .tp_as_number = &nv_Vector2Object_operators,
-    .tp_str = nv_Vector2Object___repr__
+    .tp_str = (reprfunc)nv_Vector2Object___repr__
 };
 
 nv_Vector2Object *nv_Vector2Object_new(double x, double y) {
