@@ -23,39 +23,39 @@ typedef struct {
     PyObject_HEAD
     double x;
     double y;
-} nv_Vector2Object;
+} nvVector2Object;
 
 /**
  * Body object interface
  */
 typedef struct {
     PyObject_HEAD
-    nv_Body *body;
-    nv_BodyType type;
+    nvBody *body;
+    nvBodyType type;
     int shape;
-    nv_Vector2Object *position;
+    nvVector2Object *position;
     double angle;
     double radius;
     nv_uint16 id;
-} nv_BodyObject;
+} nvBodyObject;
 
 /**
  * Space object interface
  */
 typedef struct {
     PyObject_HEAD
-    nv_Space *space;
-    nv_Array *body_objects;
-} nv_SpaceObject;
+    nvSpace *space;
+    nvArray *body_objects;
+} nvSpaceObject;
 
 /**
  * Distance Joint Constraint object interface
  */
 typedef struct {
     PyObject_HEAD
-    nv_Constraint *cons;
+    nvConstraint *cons;
     double length;
-} nv_DistanceJointObject;
+} nvDistanceJointObject;
 
 
 
@@ -70,7 +70,7 @@ typedef struct {
 /**
  * Create new Vector2 object
  */
-nv_Vector2Object *nv_Vector2Object_new(double x, double y);
+nvVector2Object *nvVector2Object_new(double x, double y);
 
 /**
  * Vector2 Python object to Vector2 struct
@@ -79,12 +79,12 @@ nv_Vector2Object *nv_Vector2Object_new(double x, double y);
 
 
 
-static void nv_Vector2Object_dealloc(nv_Vector2Object *self) {
+static void nvVector2Object_dealloc(nvVector2Object *self) {
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
-static int nv_Vector2Object_init(
-    nv_Vector2Object *self,
+static int nvVector2Object_init(
+    nvVector2Object *self,
     PyObject *args,
     PyObject *kwds
 ) {
@@ -101,7 +101,7 @@ static int nv_Vector2Object_init(
 }
 
 
-static PyObject *nv_Vector2Object___repr__(nv_Vector2Object* self) {
+static PyObject *nvVector2Object___repr__(nvVector2Object* self) {
     return PyUnicode_FromFormat("<Vector2(%g, %g)>", self->x, self->y);
 }
 
@@ -109,79 +109,79 @@ static PyObject *nv_Vector2Object___repr__(nv_Vector2Object* self) {
 /**
  * Vector2 object method interface
  */
-static PyMethodDef nv_Vector2Object_methods[] = {
+static PyMethodDef nvVector2Object_methods[] = {
     {
         "__repr__",
-        (PyCFunction)nv_Vector2Object___repr__, METH_NOARGS,
+        (PyCFunction)nvVector2Object___repr__, METH_NOARGS,
         ""
     },
 
     {NULL} // Sentinel
 };
 
-static PyObject *nv_Vector2Object___add__(
-    nv_Vector2Object *self,
-    nv_Vector2Object *vector
+static PyObject *nvVector2Object___add__(
+    nvVector2Object *self,
+    nvVector2Object *vector
 ) {
-    nv_Vector2 result = nv_Vector2_add(PY_TO_VEC2(self), PY_TO_VEC2(vector));
+    nvVector2 result = nvVector2_add(PY_TO_VEC2(self), PY_TO_VEC2(vector));
 
-    return nv_Vector2Object_new(result.x, result.y);
+    return nvVector2Object_new(result.x, result.y);
 }
 
-static PyObject *nv_Vector2Object___sub__(
-    nv_Vector2Object *self,
-    nv_Vector2Object *vector
+static PyObject *nvVector2Object___sub__(
+    nvVector2Object *self,
+    nvVector2Object *vector
 ) {
-    nv_Vector2 result = nv_Vector2_sub(PY_TO_VEC2(self), PY_TO_VEC2(vector));
+    nvVector2 result = nvVector2_sub(PY_TO_VEC2(self), PY_TO_VEC2(vector));
 
-    return nv_Vector2Object_new(result.x, result.y);
+    return nvVector2Object_new(result.x, result.y);
 }
 
-static PyObject *nv_Vector2Object___mul__(
-    nv_Vector2Object *self,
+static PyObject *nvVector2Object___mul__(
+    nvVector2Object *self,
     PyObject *scalar
 ) {
     double s = PyFloat_AS_DOUBLE(scalar);
 
-    nv_Vector2 result = nv_Vector2_mul(PY_TO_VEC2(self), s);
+    nvVector2 result = nvVector2_mul(PY_TO_VEC2(self), s);
 
-    return nv_Vector2Object_new(result.x, result.y);
+    return nvVector2Object_new(result.x, result.y);
 }
 
-static PyObject *nv_Vector2Object___truediv__(
-    nv_Vector2Object *self,
+static PyObject *nvVector2Object___truediv__(
+    nvVector2Object *self,
     PyObject *scalar
 ) {
     double s = PyFloat_AS_DOUBLE(scalar);
 
-    nv_Vector2 result = nv_Vector2_div(PY_TO_VEC2(self), s);
+    nvVector2 result = nvVector2_div(PY_TO_VEC2(self), s);
 
-    return nv_Vector2Object_new(result.x, result.y);
+    return nvVector2Object_new(result.x, result.y);
 }
 
 /**
  * Vector2 object operator overloadings
  */
-static PyNumberMethods nv_Vector2Object_operators = {
-    .nb_add =         (binaryfunc)nv_Vector2Object___add__,
-    .nb_subtract =    (binaryfunc)nv_Vector2Object___sub__,
-    .nb_multiply =    (binaryfunc)nv_Vector2Object___mul__,
-    .nb_true_divide = (binaryfunc)nv_Vector2Object___truediv__
+static PyNumberMethods nvVector2Object_operators = {
+    .nb_add =         (binaryfunc)nvVector2Object___add__,
+    .nb_subtract =    (binaryfunc)nvVector2Object___sub__,
+    .nb_multiply =    (binaryfunc)nvVector2Object___mul__,
+    .nb_true_divide = (binaryfunc)nvVector2Object___truediv__
 };
 
 /**
  * Vector2 object member interface
  */
-static PyMemberDef nv_Vector2Object_members[] = {
+static PyMemberDef nvVector2Object_members[] = {
     {
         "x",
-        T_DOUBLE, offsetof(nv_Vector2Object, x), 0,
+        T_DOUBLE, offsetof(nvVector2Object, x), 0,
         ""
     },
 
     {
         "y",
-        T_DOUBLE, offsetof(nv_Vector2Object, y), 0,
+        T_DOUBLE, offsetof(nvVector2Object, y), 0,
         ""
     },
 
@@ -191,24 +191,24 @@ static PyMemberDef nv_Vector2Object_members[] = {
 /**
  * Vector2 object type internals
  */
-PyTypeObject nv_Vector2ObjectType = {
+PyTypeObject nvVector2ObjectType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "nova.Vector2",
     .tp_doc = "Vector2 object",
-    .tp_basicsize = sizeof(nv_Vector2Object),
+    .tp_basicsize = sizeof(nvVector2Object),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = PyType_GenericNew,
-    .tp_dealloc = (destructor)nv_Vector2Object_dealloc,
-    .tp_init = (initproc)nv_Vector2Object_init,
-    .tp_members = nv_Vector2Object_members,
-    .tp_as_number = &nv_Vector2Object_operators,
-    .tp_str = (reprfunc)nv_Vector2Object___repr__
+    .tp_dealloc = (destructor)nvVector2Object_dealloc,
+    .tp_init = (initproc)nvVector2Object_init,
+    .tp_members = nvVector2Object_members,
+    .tp_as_number = &nvVector2Object_operators,
+    .tp_str = (reprfunc)nvVector2Object___repr__
 };
 
-nv_Vector2Object *nv_Vector2Object_new(double x, double y) {
+nvVector2Object *nvVector2Object_new(double x, double y) {
     PyObject *args = Py_BuildValue("dd", x, y);
-    nv_Vector2Object *obj = (nv_Vector2Object *)PyObject_CallObject((PyObject *)&nv_Vector2ObjectType, args);
+    nvVector2Object *obj = (nvVector2Object *)PyObject_CallObject((PyObject *)&nvVector2ObjectType, args);
     Py_DECREF(args);
     Py_INCREF(obj);
     return obj;
@@ -224,18 +224,18 @@ nv_Vector2Object *nv_Vector2Object_new(double x, double y) {
 
 
 
-static void nv_BodyObject_dealloc(nv_BodyObject *self) {
-    // Don't free nv_Body instance because space frees it
+static void nvBodyObject_dealloc(nvBodyObject *self) {
+    // Don't free nvBody instance because space frees it
     Py_XDECREF(self->position);
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
-static int nv_BodyObject_init(
-    nv_BodyObject *self,
+static int nvBodyObject_init(
+    nvBodyObject *self,
     PyObject *args,
     PyObject *kwds
 ) {
-    nv_BodyType type;
+    nvBodyType type;
     int shape;
     double x;
     double y;
@@ -245,20 +245,21 @@ static int nv_BodyObject_init(
     double friction;
     double radius;
     PyObject *vertices = NULL;
+    int hull = false;
 
     if (!PyArg_ParseTuple(
-        args, "iiddddddd|O",
-        &type, &shape, &x, &y, &angle, &density, &restitution, &friction, &radius, &vertices
+        args, "iiddddddd|Oi",
+        &type, &shape, &x, &y, &angle, &density, &restitution, &friction, &radius, &vertices, &hull
     ))
         return -1;
 
     self->type = type;
     self->shape = shape;
-    self->position = (nv_Vector2Object *)nv_Vector2Object_new(x, y);
+    self->position = (nvVector2Object *)nvVector2Object_new(x, y);
     self->angle = angle;
     self->radius = radius;
 
-    nv_Array *new_vertices = NULL;
+    nvArray *new_vertices = NULL;
 
     // Validate polygon vertices
     if (vertices) {
@@ -274,8 +275,8 @@ static int nv_BodyObject_init(
             return 0;
         }
 
-        // Create nv_Array from vertices sequence
-        new_vertices = nv_Array_new();
+        // Create nvArray from vertices sequence
+        new_vertices = nvArray_new();
         PyObject *v;
         PyObject *vx;
         PyObject *vy;
@@ -285,7 +286,7 @@ static int nv_BodyObject_init(
             vx = PySequence_GetItem(v, 0);
             vy = PySequence_GetItem(v, 1);
 
-            nv_Array_add(new_vertices, NV_VEC2_NEW(PyFloat_AS_DOUBLE(vx), PyFloat_AS_DOUBLE(vy)));
+            nvArray_add(new_vertices, NV_VEC2_NEW(PyFloat_AS_DOUBLE(vx), PyFloat_AS_DOUBLE(vy)));
 
             Py_DECREF(v);
             Py_DECREF(vx);
@@ -294,23 +295,36 @@ static int nv_BodyObject_init(
     }
 
     if (shape == 0) {
-        self->body = nv_Circle_new(
+        self->body = nvBody_new(
             type,
+            nvCircleShape_new(radius),
             NV_VEC2(x, y),
             angle,
-            (nv_Material){density, restitution, friction},
-            radius
+            (nvMaterial){density, restitution, friction}
         );
     }
 
     else if (shape == 1) {
-        self->body = nv_Polygon_new(
-            type,
-            NV_VEC2(x, y),
-            angle,
-            (nv_Material){density, restitution, friction},
-            new_vertices
-        );
+        if (hull) {
+            nvShape *convex_hull_shape = nvConvexHullShape_new(new_vertices);
+
+            self->body = nvBody_new(
+                type,
+                convex_hull_shape,
+                NV_VEC2(x, y),
+                angle,
+                (nvMaterial){density, restitution, friction}
+            );
+        }
+        else {
+            self->body = nvBody_new(
+                type,
+                nvPolygonShape_new(new_vertices),
+                NV_VEC2(x, y),
+                angle,
+                (nvMaterial){density, restitution, friction}
+            );
+        }
     }
 
     // Actual ID is assigned at adding to space
@@ -322,69 +336,69 @@ static int nv_BodyObject_init(
 /**
  * Body object member interface
  */
-static PyMemberDef nv_BodyObject_members[] = {
+static PyMemberDef nvBodyObject_members[] = {
     {
         "type",
-        T_INT, offsetof(nv_BodyObject, type), 0,
+        T_INT, offsetof(nvBodyObject, type), 0,
         ""
     },
 
     {
         "shape",
-        T_INT, offsetof(nv_BodyObject, shape), 0,
+        T_INT, offsetof(nvBodyObject, shape), 0,
         ""
     },
 
     {
         "position",
-        T_OBJECT_EX, offsetof(nv_BodyObject, position), 0,
+        T_OBJECT_EX, offsetof(nvBodyObject, position), 0,
         ""
     },
 
     {
         "angle",
-        T_DOUBLE, offsetof(nv_BodyObject, angle), 0,
+        T_DOUBLE, offsetof(nvBodyObject, angle), 0,
         ""
     },
 
     {
         "radius",
-        T_DOUBLE, offsetof(nv_BodyObject, radius), 0,
+        T_DOUBLE, offsetof(nvBodyObject, radius), 0,
         ""
     },
 
     {
         "id",
-        T_INT, offsetof(nv_BodyObject, id), 0,
+        T_INT, offsetof(nvBodyObject, id), 0,
         ""
     },
 
     {NULL} // Sentinel
 };
 
-static PyObject *nv_BodyObject_get_vertices(
-    nv_BodyObject *self,
+static PyObject *nvBodyObject_get_vertices(
+    nvBodyObject *self,
     PyObject *Py_UNUSED(ignored)
 ) {
-    nv_Polygon_model_to_world(self->body);
+    nvBody_local_to_world(self->body);
     PyObject *return_tup = PyTuple_New(self->body->shape->trans_vertices->size);
 
     for (size_t i = 0; i < self->body->shape->trans_vertices->size; i++) {
-        nv_Vector2 v = NV_TO_VEC2(self->body->shape->trans_vertices->data[i]);
+        nvVector2 v = NV_TO_VEC2(self->body->shape->trans_vertices->data[i]);
 
-        PyTuple_SET_ITEM(return_tup, i, (PyObject *)nv_Vector2Object_new(v.x, v.y));
+        PyTuple_SET_ITEM(return_tup, i, (PyObject *)nvVector2Object_new(v.x, v.y));
     }
 
     return return_tup;
 }
 
-static PyObject *nv_BodyObject_get_aabb(
-    nv_BodyObject *self,
+static PyObject *nvBodyObject_get_aabb(
+    nvBodyObject *self,
     PyObject *Py_UNUSED(ignored)
 ) {
     PyObject *return_tup = PyTuple_New(4);
 
-    nv_AABB aabb = nv_Body_get_aabb(self->body);
+    nvAABB aabb = nvBody_get_aabb(self->body);
 
     PyTuple_SET_ITEM(return_tup, 0, PyFloat_FromDouble(aabb.min_x));
     PyTuple_SET_ITEM(return_tup, 1, PyFloat_FromDouble(aabb.min_y));
@@ -394,52 +408,66 @@ static PyObject *nv_BodyObject_get_aabb(
     return return_tup;
 }
 
-static PyObject *nv_BodyObject_apply_force(
-    nv_BodyObject *self,
+static PyObject *nvBodyObject_apply_force(
+    nvBodyObject *self,
     PyObject *args
 ) {
-    nv_Vector2Object *force;
+    nvVector2Object *force;
 
-    if (!PyArg_ParseTuple(args, "O!", &nv_Vector2ObjectType, &force))
+    if (!PyArg_ParseTuple(args, "O!", &nvVector2ObjectType, &force))
         return NULL;
 
-    nv_Body_apply_force(self->body, NV_VEC2(force->x, force->y));
+    nvBody_apply_force(self->body, NV_VEC2(force->x, force->y));
 
     Py_RETURN_NONE;
 }
 
-static PyObject *nv_BodyObject_apply_force_at(
-    nv_BodyObject *self,
+static PyObject *nvBodyObject_apply_force_at(
+    nvBodyObject *self,
     PyObject *args
 ) {
-    nv_Vector2Object *force;
-    nv_Vector2Object *position;
+    nvVector2Object *force;
+    nvVector2Object *position;
 
-    if (!PyArg_ParseTuple(args, "O!O!", &nv_Vector2ObjectType, &force, &nv_Vector2ObjectType, &position))
+    if (!PyArg_ParseTuple(args, "O!O!", &nvVector2ObjectType, &force, &nvVector2ObjectType, &position))
         return NULL;
 
-    nv_Body_apply_force_at(self->body, NV_VEC2(force->x, force->y), NV_VEC2(position->x, position->y));
+    nvBody_apply_force_at(self->body, NV_VEC2(force->x, force->y), NV_VEC2(position->x, position->y));
 
     Py_RETURN_NONE;
 }
 
-static PyObject *nv_BodyObject_apply_impulse(
-    nv_BodyObject *self,
+static PyObject *nvBodyObject_apply_torque(
+    nvBodyObject *self,
     PyObject *args
 ) {
-    nv_Vector2Object *force;
-    nv_Vector2Object *position;
+    double torque;
 
-    if (!PyArg_ParseTuple(args, "O!O!", &nv_Vector2ObjectType, &force, &nv_Vector2ObjectType, &position))
+    if (!PyArg_ParseTuple(args, "d", &torque))
         return NULL;
 
-    nv_Body_apply_impulse(self->body, NV_VEC2(force->x, force->y), NV_VEC2(position->x, position->y));
+    self->body->torque += torque;
 
     Py_RETURN_NONE;
 }
 
-static PyObject *nv_BodyObject_set_mass(
-    nv_BodyObject *self,
+static PyObject *nvBodyObject_apply_impulse(
+    nvBodyObject *self,
+    PyObject *args
+) {
+    nvVector2Object *force;
+    nvVector2Object *position;
+
+    if (!PyArg_ParseTuple(args, "O!O!", &nvVector2ObjectType, &force, &nvVector2ObjectType, &position))
+        return NULL;
+
+    nvBody_apply_impulse(self->body, NV_VEC2(force->x, force->y), NV_VEC2(position->x, position->y));
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *nvBodyObject_set_mass(
+    nvBodyObject *self,
     PyObject *args
 ) {
     double mass;
@@ -447,20 +475,20 @@ static PyObject *nv_BodyObject_set_mass(
     if (!PyArg_ParseTuple(args, "d", &mass))
         return NULL;
 
-    nv_Body_set_mass(self->body, mass);
+    nvBody_set_mass(self->body, mass);
 
     Py_RETURN_NONE;
 }
 
-static PyObject *nv_BodyObject_get_mass(
-    nv_BodyObject *self,
+static PyObject *nvBodyObject_get_mass(
+    nvBodyObject *self,
     PyObject *Py_UNUSED(ignored)
 ) {
     return PyFloat_FromDouble(self->body->mass);
 }
 
-static PyObject *nv_BodyObject_set_inertia(
-    nv_BodyObject *self,
+static PyObject *nvBodyObject_set_inertia(
+    nvBodyObject *self,
     PyObject *args
 ) {
     double inertia;
@@ -468,25 +496,25 @@ static PyObject *nv_BodyObject_set_inertia(
     if (!PyArg_ParseTuple(args, "d", &inertia))
         return NULL;
 
-    nv_Body_set_inertia(self->body, inertia);
+    nvBody_set_inertia(self->body, inertia);
 
     Py_RETURN_NONE;
 }
 
-static PyObject *nv_BodyObject_get_inertia(
-    nv_BodyObject *self,
+static PyObject *nvBodyObject_get_inertia(
+    nvBodyObject *self,
     PyObject *Py_UNUSED(ignored)
 ) {
     return PyFloat_FromDouble(self->body->inertia);
 }
 
-static PyObject *nv_BodyObject_set_position(
-    nv_BodyObject *self,
+static PyObject *nvBodyObject_set_position(
+    nvBodyObject *self,
     PyObject *args
 ) {
-    nv_Vector2Object *position;
+    nvVector2Object *position;
 
-    if (!PyArg_ParseTuple(args, "O!", &nv_Vector2ObjectType, &position))
+    if (!PyArg_ParseTuple(args, "O!", &nvVector2ObjectType, &position))
         return NULL;
 
     self->body->position = NV_VEC2(position->x, position->y);
@@ -496,8 +524,8 @@ static PyObject *nv_BodyObject_set_position(
     Py_RETURN_NONE;
 }
 
-static PyObject *nv_BodyObject_set_collision(
-    nv_BodyObject *self,
+static PyObject *nvBodyObject_enable_collision(
+    nvBodyObject *self,
     PyObject *args
 ) {
     unsigned char collision;
@@ -510,96 +538,135 @@ static PyObject *nv_BodyObject_set_collision(
     Py_RETURN_NONE;
 }
 
+static PyObject *nvBodyObject_get_collision_group(
+    nvBodyObject *self,
+    PyObject *Py_UNUSED(ignored)
+) {
+    return PyBool_FromLong((long)self->body->collision_group);
+}
+
+static PyObject *nvBodyObject_set_collision_group(
+    nvBodyObject *self,
+    PyObject *args
+) {
+    int group;
+
+    if (!PyArg_ParseTuple(args, "i", &group))
+        return NULL;
+
+    self->body->collision_group = group;
+
+    Py_RETURN_NONE;
+}
+
 /**
  * Body object method interface
  */
-static PyMethodDef nv_BodyObject_methods[] = {
+static PyMethodDef nvBodyObject_methods[] = {
     {
         "get_vertices",
-        (PyCFunction)nv_BodyObject_get_vertices, METH_NOARGS,
+        (PyCFunction)nvBodyObject_get_vertices, METH_NOARGS,
         ""
     },
 
     {
         "get_aabb",
-        (PyCFunction)nv_BodyObject_get_aabb, METH_NOARGS,
+        (PyCFunction)nvBodyObject_get_aabb, METH_NOARGS,
         ""
     },
 
     {
         "apply_force",
-        (PyCFunction)nv_BodyObject_apply_force, METH_VARARGS,
+        (PyCFunction)nvBodyObject_apply_force, METH_VARARGS,
         ""
     },
 
     {
         "apply_force_at",
-        (PyCFunction)nv_BodyObject_apply_force_at, METH_VARARGS,
+        (PyCFunction)nvBodyObject_apply_force_at, METH_VARARGS,
+        ""
+    },
+
+    {
+        "apply_torque",
+        (PyCFunction)nvBodyObject_apply_torque, METH_VARARGS,
         ""
     },
 
     {
         "apply_impulse",
-        (PyCFunction)nv_BodyObject_apply_impulse, METH_VARARGS,
+        (PyCFunction)nvBodyObject_apply_impulse, METH_VARARGS,
         ""
     },
 
     {
         "set_mass",
-        (PyCFunction)nv_BodyObject_set_mass, METH_VARARGS,
+        (PyCFunction)nvBodyObject_set_mass, METH_VARARGS,
         ""
     },
 
     {
         "get_mass",
-        (PyCFunction)nv_BodyObject_get_mass, METH_NOARGS,
+        (PyCFunction)nvBodyObject_get_mass, METH_NOARGS,
         ""
     },
 
     {
         "set_inertia",
-        (PyCFunction)nv_BodyObject_set_inertia, METH_VARARGS,
+        (PyCFunction)nvBodyObject_set_inertia, METH_VARARGS,
         ""
     },
 
     {
         "get_inertia",
-        (PyCFunction)nv_BodyObject_get_inertia, METH_NOARGS,
+        (PyCFunction)nvBodyObject_get_inertia, METH_NOARGS,
         ""
     },
 
     {
         "set_position",
-        (PyCFunction)nv_BodyObject_set_position, METH_VARARGS,
+        (PyCFunction)nvBodyObject_set_position, METH_VARARGS,
         ""
     },
 
     {
-        "set_collision",
-        (PyCFunction)nv_BodyObject_set_collision, METH_VARARGS,
+        "enable_collision",
+        (PyCFunction)nvBodyObject_enable_collision, METH_VARARGS,
+        ""
+    },
+
+    {
+        "get_collision_group",
+        (PyCFunction)nvBodyObject_get_collision_group, METH_NOARGS,
+        ""
+    },
+
+    {
+        "set_collision_group",
+        (PyCFunction)nvBodyObject_set_collision_group, METH_VARARGS,
         ""
     },
 
     {NULL} // Sentinel
 };
 
-PyTypeObject nv_BodyObjectType = {
+PyTypeObject nvBodyObjectType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "nova.Body",
     .tp_doc = "Body object",
-    .tp_basicsize = sizeof(nv_BodyObject),
+    .tp_basicsize = sizeof(nvBodyObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = PyType_GenericNew,
-    .tp_dealloc = (destructor)nv_BodyObject_dealloc,
-    .tp_init = (initproc)nv_BodyObject_init,
-    .tp_methods = nv_BodyObject_methods,
-    .tp_members = nv_BodyObject_members
+    .tp_dealloc = (destructor)nvBodyObject_dealloc,
+    .tp_init = (initproc)nvBodyObject_init,
+    .tp_methods = nvBodyObject_methods,
+    .tp_members = nvBodyObject_members
 };
 
 
 PyObject *nv_create_circle(PyObject *self, PyObject *args) {
-    nv_BodyType type;
+    nvBodyType type;
     double x;
     double y;
     double angle;
@@ -615,13 +682,13 @@ PyObject *nv_create_circle(PyObject *self, PyObject *args) {
         return NULL;
 
     PyObject *inst_args = Py_BuildValue("iiddddddd", type, 0, x, y, angle, density, restitution, friction, radius);
-    nv_BodyObject *obj = (nv_BodyObject *)PyObject_CallObject((PyObject *)&nv_BodyObjectType, inst_args);
+    nvBodyObject *obj = (nvBodyObject *)PyObject_CallObject((PyObject *)&nvBodyObjectType, inst_args);
     Py_DECREF(inst_args);
     return (PyObject *)obj;
 }
 
 PyObject *nv_create_rect(PyObject *self, PyObject *args) {
-    nv_BodyType type;
+    nvBodyType type;
     double x;
     double y;
     double angle;
@@ -643,7 +710,42 @@ PyObject *nv_create_rect(PyObject *self, PyObject *args) {
     PyObject *inst_args = Py_BuildValue("iiddddddd((dd)(dd)(dd)(dd))", type, 1, x, y, angle, density, restitution, friction, 0.0,
         -w, -h, w, -h, w, h, -w, h);
 
-    nv_BodyObject *obj = (nv_BodyObject *)PyObject_CallObject((PyObject *)&nv_BodyObjectType, inst_args);
+    nvBodyObject *obj = (nvBodyObject *)PyObject_CallObject((PyObject *)&nvBodyObjectType, inst_args);
+    Py_DECREF(inst_args);
+    return (PyObject *)obj;
+}
+
+PyObject *nv_create_polygon(PyObject *self, PyObject *args) {
+    nvBodyType type;
+    double x;
+    double y;
+    double angle;
+    double density;
+    double restitution;
+    double friction;
+    PyObject *vertices;
+    int hull = false;
+
+    if (!PyArg_ParseTuple(
+        args, "iddddddO|i",
+        &type, &x, &y, &angle, &density, &restitution, &friction, &vertices, &hull
+    ))
+        return NULL;
+
+    if (!PySequence_Check(vertices)) {
+        PyErr_SetString(PyExc_TypeError, "Vertices must be a sequence of number pairs");
+        return 0;
+    }
+
+    size_t vertices_len = PySequence_Length(vertices);
+
+    if (vertices_len < 3) {
+        PyErr_SetString(PyExc_ValueError, "Polygon vertices must be at least length of 3");
+        return 0;
+    }
+
+    PyObject *inst_args = Py_BuildValue("iidddddddOi", type, 1, x, y, angle, density, restitution, friction, 0.0, vertices, hull);
+    nvBodyObject *obj = (nvBodyObject *)PyObject_CallObject((PyObject *)&nvBodyObjectType, inst_args);
     Py_DECREF(inst_args);
     return (PyObject *)obj;
 }
@@ -658,17 +760,17 @@ PyObject *nv_create_rect(PyObject *self, PyObject *args) {
 
 
 
-static void nv_DistanceJointObject_dealloc(nv_DistanceJointObject *self) {
+static void nvDistanceJointObject_dealloc(nvDistanceJointObject *self) {
     // Don't free constraint ecause space frees it
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
-static int nv_DistanceJointObject_init(
-    nv_DistanceJointObject *self,
+static int nvDistanceJointObject_init(
+    nvDistanceJointObject *self,
     PyObject *args,
     PyObject *kwds
 ) {
-    nv_BodyType type;
+    nvBodyType type;
     int shape;
     double x;
     double y;
@@ -679,23 +781,23 @@ static int nv_DistanceJointObject_init(
     double radius;
     PyObject *vertices = NULL;
 
-    nv_BodyObject *a = NULL;
-    nv_BodyObject *b = NULL;
-    nv_Vector2Object *anchor_a = NULL;
-    nv_Vector2Object *anchor_b = NULL;
+    nvBodyObject *a = NULL;
+    nvBodyObject *b = NULL;
+    nvVector2Object *anchor_a = NULL;
+    nvVector2Object *anchor_b = NULL;
     double length;
 
     if (!PyArg_ParseTuple(
         args, "O!O!O!O!d",
-        &nv_BodyObjectType, &a,
-        &nv_BodyObjectType, &b,
-        &nv_Vector2ObjectType, &anchor_a,
-        &nv_Vector2ObjectType, &anchor_b,
+        &nvBodyObjectType, &a,
+        &nvBodyObjectType, &b,
+        &nvVector2ObjectType, &anchor_a,
+        &nvVector2ObjectType, &anchor_b,
         &length
     ))
         return -1;
     
-    self->cons = nv_DistanceJoint_new(
+    self->cons = nvDistanceJoint_new(
         a->body, b->body, PY_TO_VEC2(anchor_a), PY_TO_VEC2(anchor_b), length
     );
 
@@ -705,27 +807,27 @@ static int nv_DistanceJointObject_init(
 /**
  * Distance joint object member interface
  */
-static PyMemberDef nv_DistanceJointObject_members[] = {
+static PyMemberDef nvDistanceJointObject_members[] = {
     {
         "length",
-        T_DOUBLE, offsetof(nv_DistanceJointObject, length), 0,
+        T_DOUBLE, offsetof(nvDistanceJointObject, length), 0,
         ""
     },
 
     {NULL} // Sentinel
 };
 
-PyTypeObject nv_DistanceJointObjectType = {
+PyTypeObject nvDistanceJointObjectType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "nova.DistanceJoint",
     .tp_doc = "Distance joint constraintt",
-    .tp_basicsize = sizeof(nv_DistanceJointObject),
+    .tp_basicsize = sizeof(nvDistanceJointObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = PyType_GenericNew,
-    .tp_dealloc = (destructor)nv_DistanceJointObject_dealloc,
-    .tp_init = (initproc)nv_DistanceJointObject_init,
-    .tp_members = nv_DistanceJointObject_members
+    .tp_dealloc = (destructor)nvDistanceJointObject_dealloc,
+    .tp_init = (initproc)nvDistanceJointObject_init,
+    .tp_members = nvDistanceJointObject_members
 };
 
 
@@ -738,8 +840,8 @@ PyTypeObject nv_DistanceJointObjectType = {
 
 
 
-static void nv_SpaceObject_dealloc(nv_SpaceObject *self) {
-    nv_Space_free(self->space);
+static void nvSpaceObject_dealloc(nvSpaceObject *self) {
+    nvSpace_free(self->space);
 
     // Decrease reference of each body object in array
     for (size_t i = 0; i < self->body_objects->size; i++) {
@@ -747,24 +849,24 @@ static void nv_SpaceObject_dealloc(nv_SpaceObject *self) {
         Py_DECREF(body);
     }
 
-    nv_Array_free(self->body_objects);
+    nvArray_free(self->body_objects);
 
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
-static int nv_SpaceObject_init(
-    nv_SpaceObject *self,
+static int nvSpaceObject_init(
+    nvSpaceObject *self,
     PyObject *args,
     PyObject *kwds
 ) {
-    self->space = nv_Space_new();
-    self->body_objects = nv_Array_new();
+    self->space = nvSpace_new();
+    self->body_objects = nvArray_new();
 
     return 0;
 }
 
-static PyObject *nv_SpaceObject_step(
-    nv_SpaceObject *self,
+static PyObject *nvSpaceObject_step(
+    nvSpaceObject *self,
     PyObject *args
 ) {
     double dt;
@@ -782,7 +884,7 @@ static PyObject *nv_SpaceObject_step(
             &substeps
     )) return NULL;
 
-    nv_Space_step(
+    nvSpace_step(
         self->space,
         dt,
         velocity_iters,
@@ -791,15 +893,15 @@ static PyObject *nv_SpaceObject_step(
         substeps
     );
 
-    nv_Array *removed = nv_Array_new();
+    nvArray *removed = nvArray_new();
 
     for (size_t i = 0; i < self->body_objects->size; i++) {
-        nv_BodyObject *body_object = (nv_BodyObject *)self->body_objects->data[i];
+        nvBodyObject *body_object = (nvBodyObject *)self->body_objects->data[i];
 
         bool found = false;
-        nv_Body *found_body;
+        nvBody *found_body;
         for (size_t j = 0; j < self->space->bodies->size; j++) {
-            nv_Body *body = (nv_Body *)self->space->bodies->data[j];
+            nvBody *body = (nvBody *)self->space->bodies->data[j];
             if (body == body_object->body) {
                 found = true;
                 found_body = body;
@@ -808,7 +910,7 @@ static PyObject *nv_SpaceObject_step(
         }
 
         if (!found) {
-            nv_Array_add(removed, body_object);
+            nvArray_add(removed, body_object);
             continue;
         }
 
@@ -823,22 +925,22 @@ static PyObject *nv_SpaceObject_step(
     }
 
     for (size_t i = 0; i < removed->size; i++) {
-        nv_BodyObject *body_object = removed->data[i];
+        nvBodyObject *body_object = removed->data[i];
         Py_DECREF(body_object);
-        nv_Array_remove(self->body_objects, body_object);
+        nvArray_remove(self->body_objects, body_object);
     }
 
     Py_RETURN_NONE;
 }
 
-static PyObject *nv_SpaceObject_get_bodies(
-    nv_SpaceObject *self,
+static PyObject *nvSpaceObject_get_bodies(
+    nvSpaceObject *self,
     PyObject *Py_UNUSED(ignored)
 ) {
     PyObject *return_tup = PyTuple_New(self->body_objects->size);
 
     for (size_t i = 0; i < self->body_objects->size; i++) {
-        nv_BodyObject *body = (nv_BodyObject *)self->body_objects->data[i];
+        nvBodyObject *body = (nvBodyObject *)self->body_objects->data[i];
         
         Py_INCREF(body);
         PyTuple_SET_ITEM(return_tup, i, body);
@@ -847,25 +949,61 @@ static PyObject *nv_SpaceObject_get_bodies(
     return return_tup;
 }
 
-static PyObject *nv_SpaceObject_add(
-    nv_SpaceObject *self,
+static PyObject *nvSpaceObject_get_constraints(
+    nvSpaceObject *self,
+    PyObject *Py_UNUSED(ignored)
+) {
+    size_t n = self->space->constraints->size;
+
+    PyObject *return_tup = PyTuple_New(n);
+
+    for (size_t i = 0; i < n; i++) {
+        nvConstraint *cons = self->space->constraints->data[i];
+
+        if (cons->type == nvConstraintType_DISTANCEJOINT) {
+            // Transform distance joint's anchors to world space
+            nvVector2 ra = nvVector2_add(nvVector2_rotate(((nvDistanceJoint *)cons->def)->anchor_a, cons->a->angle), cons->a->position);
+            nvVector2 rb = nvVector2_add(nvVector2_rotate(((nvDistanceJoint *)cons->def)->anchor_b, cons->b->angle), cons->b->position);
+
+            PyObject *cons_tup = PyTuple_New(3);
+            PyTuple_SET_ITEM(cons_tup, 0, PyLong_FromLong(1)); // 1 -> distance joint
+            PyTuple_SET_ITEM(cons_tup, 1, nvVector2Object_new(ra.x, ra.y));
+            PyTuple_SET_ITEM(cons_tup, 2, nvVector2Object_new(rb.x, rb.y));
+            
+            PyTuple_SET_ITEM(return_tup, i, cons_tup);
+        }
+        else {
+            PyObject *cons_tup = PyTuple_New(3);
+            PyTuple_SET_ITEM(cons_tup, 0, PyLong_FromLong(0));
+            PyTuple_SET_ITEM(cons_tup, 1, PyLong_FromLong(0));
+            PyTuple_SET_ITEM(cons_tup, 2, PyLong_FromLong(0));
+
+            PyTuple_SET_ITEM(return_tup, i, cons_tup);
+        }
+    }
+
+    return return_tup;
+}
+
+static PyObject *nvSpaceObject_add(
+    nvSpaceObject *self,
     PyObject *args
 ) {
-    nv_BodyObject *body;
+    nvBodyObject *body;
 
-    if (!PyArg_ParseTuple(args, "O!", &nv_BodyObjectType, &body))
+    if (!PyArg_ParseTuple(args, "O!", &nvBodyObjectType, &body))
         return NULL;
 
-    nv_Space_add(self->space, body->body);
+    nvSpace_add(self->space, body->body);
     body->id = body->body->id;
     Py_INCREF(body);
-    nv_Array_add(self->body_objects, body);
+    nvArray_add(self->body_objects, body);
 
     Py_RETURN_NONE;
 }
 
-static PyObject *nv_SpaceObject_add_constraint(
-    nv_SpaceObject *self,
+static PyObject *nvSpaceObject_add_constraint(
+    nvSpaceObject *self,
     PyObject *args
 ) {
     PyObject *constraint;
@@ -873,44 +1011,44 @@ static PyObject *nv_SpaceObject_add_constraint(
     if (!PyArg_ParseTuple(args, "O", &constraint))
         return NULL;
 
-    if (PyObject_IsInstance(constraint, (PyObject *)(&nv_DistanceJointObjectType)))
-        nv_Space_add_constraint(self->space, ((nv_DistanceJointObject *)constraint)->cons);
+    if (PyObject_IsInstance(constraint, (PyObject *)(&nvDistanceJointObjectType)))
+        nvSpace_add_constraint(self->space, ((nvDistanceJointObject *)constraint)->cons);
 
     Py_RETURN_NONE;
 }
 
-static PyObject *nv_SpaceObject_remove(
-    nv_SpaceObject *self,
+static PyObject *nvSpaceObject_remove(
+    nvSpaceObject *self,
     PyObject *args
 ) {
-    nv_BodyObject *body;
+    nvBodyObject *body;
 
-    if (!PyArg_ParseTuple(args, "O!", &nv_BodyObjectType, &body))
+    if (!PyArg_ParseTuple(args, "O!", &nvBodyObjectType, &body))
         return NULL;
 
-    nv_Space_remove(self->space, body->body);
-    nv_Array_remove(self->body_objects, body);
+    nvSpace_remove(self->space, body->body);
+    nvArray_remove(self->body_objects, body);
     Py_XDECREF(body);
 
     Py_RETURN_NONE;
 }
 
-static PyObject *nv_SpaceObject_clear(
-    nv_SpaceObject *self,
+static PyObject *nvSpaceObject_clear(
+    nvSpaceObject *self,
     PyObject *Py_UNUSED(ignored)
 ) {
     while (self->body_objects->size > 0) {
-        nv_BodyObject *body_obj = (nv_BodyObject *)nv_Array_pop(self->body_objects, 0);
+        nvBodyObject *body_obj = (nvBodyObject *)nvArray_pop(self->body_objects, 0);
         Py_DECREF(body_obj);
     }
 
-    nv_Space_clear(self->space);
+    nvSpace_clear(self->space);
 
     Py_RETURN_NONE;
 }
 
-static PyObject *nv_SpaceObject_set_shg(
-    nv_SpaceObject *self,
+static PyObject *nvSpaceObject_set_shg(
+    nvSpaceObject *self,
     PyObject *args
 ) {
     double min_x;
@@ -923,9 +1061,9 @@ static PyObject *nv_SpaceObject_set_shg(
     if (!PyArg_ParseTuple(args, "dddddd", &min_x, &min_y, &max_x, &max_y, &cell_width, &cell_height))
         return NULL;
 
-    nv_Space_set_SHG(
+    nvSpace_set_SHG(
         self->space,
-        (nv_AABB){min_x, min_y, max_x, max_y},
+        (nvAABB){min_x, min_y, max_x, max_y},
         cell_width,
         cell_height
     );
@@ -933,8 +1071,8 @@ static PyObject *nv_SpaceObject_set_shg(
     Py_RETURN_NONE;
 }
 
-static PyObject *nv_SpaceObject_get_shg(
-    nv_SpaceObject *self,
+static PyObject *nvSpaceObject_get_shg(
+    nvSpaceObject *self,
     PyObject *Py_UNUSED(ignored)
 ) {
     PyObject *return_tup = PyTuple_New(6);
@@ -949,8 +1087,8 @@ static PyObject *nv_SpaceObject_get_shg(
     return return_tup;
 }
 
-static PyObject *nv_SpaceObject_set_kill_bounds(
-    nv_SpaceObject *self,
+static PyObject *nvSpaceObject_set_kill_bounds(
+    nvSpaceObject *self,
     PyObject *args
 ) {
     double min_x;
@@ -961,7 +1099,7 @@ static PyObject *nv_SpaceObject_set_kill_bounds(
     if (!PyArg_ParseTuple(args, "dddd", &min_x, &min_y, &max_x, &max_y))
         return NULL;
 
-    self->space->kill_bounds = (nv_AABB){min_x, min_y, max_x, max_y};
+    self->space->kill_bounds = (nvAABB){min_x, min_y, max_x, max_y};
 
     Py_RETURN_NONE;
 }
@@ -969,75 +1107,81 @@ static PyObject *nv_SpaceObject_set_kill_bounds(
 /**
  * Space object method interface
  */
-static PyMethodDef nv_SpaceObject_methods[] = {
+static PyMethodDef nvSpaceObject_methods[] = {
     {
         "step",
-        (PyCFunction)nv_SpaceObject_step, METH_VARARGS,
+        (PyCFunction)nvSpaceObject_step, METH_VARARGS,
         ""
     },
 
     {
         "get_bodies",
-        (PyCFunction)nv_SpaceObject_get_bodies, METH_NOARGS,
+        (PyCFunction)nvSpaceObject_get_bodies, METH_NOARGS,
+        ""
+    },
+
+    {
+        "get_constraints",
+        (PyCFunction)nvSpaceObject_get_constraints, METH_NOARGS,
         ""
     },
 
     {
         "add",
-        (PyCFunction)nv_SpaceObject_add, METH_VARARGS,
+        (PyCFunction)nvSpaceObject_add, METH_VARARGS,
         ""
     },
 
     {
         "add_constraint",
-        (PyCFunction)nv_SpaceObject_add_constraint, METH_VARARGS,
+        (PyCFunction)nvSpaceObject_add_constraint, METH_VARARGS,
         ""
     },
 
     {
         "remove",
-        (PyCFunction)nv_SpaceObject_remove, METH_VARARGS,
+        (PyCFunction)nvSpaceObject_remove, METH_VARARGS,
         ""
     },
 
     {
         "clear",
-        (PyCFunction)nv_SpaceObject_clear, METH_NOARGS,
+        (PyCFunction)nvSpaceObject_clear, METH_NOARGS,
         ""
     },
 
     {
         "set_shg",
-        (PyCFunction)nv_SpaceObject_set_shg, METH_VARARGS,
+        (PyCFunction)nvSpaceObject_set_shg, METH_VARARGS,
         ""
     },
 
     {
         "get_shg",
-        (PyCFunction)nv_SpaceObject_get_shg, METH_NOARGS,
+        (PyCFunction)nvSpaceObject_get_shg, METH_NOARGS,
         ""
     },
 
     {
         "set_kill_bounds",
-        (PyCFunction)nv_SpaceObject_set_kill_bounds, METH_VARARGS,
+        (PyCFunction)nvSpaceObject_set_kill_bounds, METH_VARARGS,
         ""
     },
 
     {NULL} // Sentinel
 };
 
-PyTypeObject nv_SpaceObjectType = {
+PyTypeObject nvSpaceObjectType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "nova.Space",
     .tp_doc = "Space object",
-    .tp_basicsize = sizeof(nv_SpaceObject),
+    .tp_basicsize = sizeof(nvSpaceObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = PyType_GenericNew,
-    .tp_dealloc = (destructor)nv_SpaceObject_dealloc,
-    .tp_init = (initproc)nv_SpaceObject_init,
-    .tp_methods = nv_SpaceObject_methods
+    .tp_dealloc = (destructor)nvSpaceObject_dealloc,
+    .tp_init = (initproc)nvSpaceObject_init,
+    .tp_methods = nvSpaceObject_methods
 };
 
 
@@ -1057,13 +1201,19 @@ static PyMethodDef nova_methods[] = {
     {
         "create_circle",
         nv_create_circle, METH_VARARGS,
-        "Create a body with circle shape."
+        ""
     },
 
     {
         "create_rect",
         nv_create_rect, METH_VARARGS,
-        "Create a body with rect (polygon) shape."
+        ""
+    },
+
+    {
+        "create_polygon",
+        nv_create_polygon, METH_VARARGS,
+        ""
     },
 
     {NULL, NULL, 0, NULL} /* Sentinel */
@@ -1086,16 +1236,16 @@ static PyModuleDef nova_module = {
 PyMODINIT_FUNC PyInit_nova() {
     PyObject *m;
 
-    if (PyType_Ready(&nv_SpaceObjectType) < 0)
+    if (PyType_Ready(&nvSpaceObjectType) < 0)
         return NULL;
 
-    if (PyType_Ready(&nv_BodyObjectType) < 0)
+    if (PyType_Ready(&nvBodyObjectType) < 0)
         return NULL;
 
-    if (PyType_Ready(&nv_Vector2ObjectType) < 0)
+    if (PyType_Ready(&nvVector2ObjectType) < 0)
         return NULL;
 
-    if (PyType_Ready(&nv_DistanceJointObjectType) < 0)
+    if (PyType_Ready(&nvDistanceJointObjectType) < 0)
         return NULL;
 
 
@@ -1106,9 +1256,9 @@ PyMODINIT_FUNC PyInit_nova() {
     /**
      * Add nova.Space
      */
-    Py_INCREF(&nv_SpaceObjectType);
-    if (PyModule_AddObject(m, "Space", (PyObject *) &nv_SpaceObjectType) < 0) {
-        Py_DECREF(&nv_SpaceObjectType);
+    Py_INCREF(&nvSpaceObjectType);
+    if (PyModule_AddObject(m, "Space", (PyObject *) &nvSpaceObjectType) < 0) {
+        Py_DECREF(&nvSpaceObjectType);
         Py_DECREF(m);
         return NULL;
     }
@@ -1116,9 +1266,9 @@ PyMODINIT_FUNC PyInit_nova() {
     /**
      * Add nova.Body
      */
-    Py_INCREF(&nv_BodyObjectType);
-    if (PyModule_AddObject(m, "Body", (PyObject *) &nv_BodyObjectType) < 0) {
-        Py_DECREF(&nv_BodyObjectType);
+    Py_INCREF(&nvBodyObjectType);
+    if (PyModule_AddObject(m, "Body", (PyObject *) &nvBodyObjectType) < 0) {
+        Py_DECREF(&nvBodyObjectType);
         Py_DECREF(m);
         return NULL;
     }
@@ -1126,9 +1276,9 @@ PyMODINIT_FUNC PyInit_nova() {
     /**
      * Add nova.Vector2
      */
-    Py_INCREF(&nv_Vector2ObjectType);
-    if (PyModule_AddObject(m, "Vector2", (PyObject *) &nv_Vector2ObjectType) < 0) {
-        Py_DECREF(&nv_Vector2ObjectType);
+    Py_INCREF(&nvVector2ObjectType);
+    if (PyModule_AddObject(m, "Vector2", (PyObject *) &nvVector2ObjectType) < 0) {
+        Py_DECREF(&nvVector2ObjectType);
         Py_DECREF(m);
         return NULL;
     }
@@ -1136,9 +1286,9 @@ PyMODINIT_FUNC PyInit_nova() {
     /**
      * Add nova.DistanceJoint
      */
-    Py_INCREF(&nv_DistanceJointObjectType);
-    if (PyModule_AddObject(m, "DistanceJoint", (PyObject *) &nv_DistanceJointObjectType) < 0) {
-        Py_DECREF(&nv_DistanceJointObjectType);
+    Py_INCREF(&nvDistanceJointObjectType);
+    if (PyModule_AddObject(m, "DistanceJoint", (PyObject *) &nvDistanceJointObjectType) < 0) {
+        Py_DECREF(&nvDistanceJointObjectType);
         Py_DECREF(m);
         return NULL;
     }
@@ -1148,8 +1298,8 @@ PyMODINIT_FUNC PyInit_nova() {
     PyModule_AddStringConstant(m, "nova_version", NV_VERSTR);
     PyModule_AddStringConstant(m, "version", NOVA_PYTHON_VERSION);
 
-    PyModule_AddIntConstant(m, "STATIC",  nv_BodyType_STATIC);
-    PyModule_AddIntConstant(m, "DYNAMIC", nv_BodyType_DYNAMIC);
+    PyModule_AddIntConstant(m, "STATIC",  nvBodyType_STATIC);
+    PyModule_AddIntConstant(m, "DYNAMIC", nvBodyType_DYNAMIC);
 
     return m;
 }
