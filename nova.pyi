@@ -45,6 +45,9 @@ class Space:
     def get_bodies(self) -> tuple["Body"]: ...
 
     @overload
+    def get_constraints(self) -> tuple[int, Vector2, Vector2]: ...
+
+    @overload
     def set_shg(self, min_x: float, min_y: float, max_x: float, max_y: float, cell_width: float, cell_height: float) -> None: ...
 
     @overload
@@ -81,6 +84,9 @@ class Body:
     def apply_force_at(self, force: Vector2, position: Vector2) -> None: ...
 
     @overload
+    def apply_torque(self, torque: float) -> None: ...
+
+    @overload
     def apply_impulse(self, force: Vector2, position: Vector2) -> None: ...
 
     @overload
@@ -99,7 +105,13 @@ class Body:
     def set_position(self, position: Vector2) -> None: ...
 
     @overload
-    def set_collision(self, collide: bool) -> None: ...
+    def enable_collision(self, collide: bool) -> None: ...
+
+    @overload
+    def get_collision_group(self) -> int: ...
+
+    @overload
+    def set_collision_group(self, group: int) -> None: ...
 
 
 @overload
@@ -107,6 +119,9 @@ def create_circle(type: int, x: float, y: float, angle: float, density: float, r
 
 @overload
 def create_rect(type: int, x: float, y: float, angle: float, density: float, restitution: float, friction: float, width: float, height: float) -> Body: ...
+
+@overload
+def create_polygon(type: int, x: float, y: float, angle: float, density: float, restitution: float, friction: float, points: list[tuple[float, float]], hull: bool = False) -> Body: ...
 
 
 class DistanceJoint:
