@@ -155,7 +155,18 @@ if __name__ == "__main__":
     extension = Extension(
         name = "nova",
         sources = get_sources(),
-        include_dirs = [str(NOVA_PATH / "include"), str(BASE_PATH / "src")]
+        include_dirs = [str(NOVA_PATH / "include"), str(BASE_PATH / "src")],
+        extra_compile_args=[
+            "-DNV_USE_SIMD",
+            "-DNV_USE_FLOAT",
+            "-Os",
+            "-g0",
+            "-Wall",
+            # These two are from here:
+            # https://github.com/emscripten-core/emscripten/issues/16305#issuecomment-1152996151
+            "-Wbad-function-cast",
+            "-Wcast-function-type"
+        ]
     )
 
     setup(
