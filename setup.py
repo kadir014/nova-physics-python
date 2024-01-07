@@ -152,15 +152,10 @@ if __name__ == "__main__":
         download_latest()
 
 
-    libraries = []
-    if platform.system() == "Windows":
-        libraries.append("winmm") # For profiler
-
     extension = Extension(
         name = "nova",
         sources = get_sources(),
-        include_dirs = [str(NOVA_PATH / "include"), str(BASE_PATH / "src")],
-        libraries = libraries
+        include_dirs = [str(NOVA_PATH / "include"), str(BASE_PATH / "src")]
     )
 
     setup(
