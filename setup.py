@@ -186,7 +186,7 @@ if __name__ == "__main__":
         name = "nova",
         sources = [str(BASE_PATH / "src" / "py_nova.c")],
         include_dirs = [str(BUILD_PATH / "include")],
-        library_dirs = [str(BUILD_PATH / "lib" / "VS-x86")],
+        library_dirs = [str(BUILD_PATH / "lib" / "x86_64")],
         libraries=["nova"],
         #extra_link_args = ["nova.lib",]
     )
