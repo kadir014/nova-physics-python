@@ -40,7 +40,13 @@ if platform.system() == "Darwin":
 DOWNLOAD_NIGHTLY = False
 if "--nightly" in sys.argv:
     DOWNLOAD_NIGHTLY = True
-    sys.argv.remove("--nightly") # Do not mess with setuptools
+    sys.argv.remove("--nightly")
+
+
+BUILD_WEB = False
+if "--web" in sys.argv:
+    BUILD_WEB = True
+    sys.argv.remove("--web")
 
 
 BASE_PATH = Path(os.getcwd())
@@ -160,43 +166,47 @@ if __name__ == "__main__":
         shutil.rmtree(BUILD_PATH)
 
 
-    # Download latest or nightly Nova Physics release
-
     # if DOWNLOAD_NIGHTLY:
     #     download_nightly()
     # else:
     #     download_latest()
-
-    # extension = Extension(
-    #     name = "nova",
-    #     sources = get_sources(),
-    #     include_dirs = [str(NOVA_PATH / "include"), str(BASE_PATH / "src")],
-    #     extra_compile_args=[
-    #         "-DNV_USE_SIMD",
-    #         #"-DNV_USE_FLOAT",
-    #         "/Ox",
-    #         #"-g0",
-    #         "-Wall"
-    #     ]
-    # )
         
-    download_extract_library()
+    if BUILD_WEB:
+        download_latest()
 
-    extension = Extension(
-        name = "nova",
-        sources = [str(BASE_PATH / "src" / "py_nova.c")],
-        include_dirs = [str(BUILD_PATH / "include")],
-        library_dirs = [str(BUILD_PATH / "lib" / "x86_64")],
-        libraries=["nova"],
-        #extra_link_args = ["nova.lib",]
-    )
+        print("Building for web.")
 
-    setup(
-        name = "nova",
-        version = "0.0.0",
-        description = "Nova Physics Engine",
-        ext_modules = [extension]
-    )
+        extension = Extension(
+            name = "nova",
+            sources = get_sources(),
+            include_dirs = [str(NOVA_PATH / "include"), str(BASE_PATH / "src")],
+            extra_compile_args=[
+                #"-DNV_USE_SIMD",
+                #"-DNV_USE_FLOAT",
+                "-O3",
+                #"-g0",
+                "-Wall"
+            ]
+        )
+
+    else:
+        download_extract_library()
+
+        extension = Extension(
+            name = "nova",
+            sources = [str(BASE_PATH / "src" / "py_nova.c")],
+            include_dirs = [str(BUILD_PATH / "include")],
+            library_dirs = [str(BUILD_PATH / "lib" / "x86_64")],
+            libraries=["nova"],
+            #extra_link_args = ["nova.lib",]
+        )
+
+        setup(
+            name = "nova",
+            version = "0.0.0",
+            description = "Nova Physics Engine",
+            ext_modules = [extension]
+        )
 
 
     # Python 3.10 -> lib.win-amd64-3.10        / nova.cp310-win_amd64.pyd
