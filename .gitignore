@@ -15,6 +15,7 @@ settings.cfg
 __pycache__/
 archive.py
 keybinds.py
+dev/
 
 # Prerequisites
 *.d

@@ -81,7 +81,6 @@ def download_latest():
 
 def download_nightly():
     """ Download the latest Nova Physics commit. """
-    # TODO: Rename nova-physics-main to nova-physics
 
     print("Downloading latest commit...")
 
@@ -97,6 +96,23 @@ def download_nightly():
     os.rename(BUILD_PATH / "nova-physics-main", BUILD_PATH / "nova-physics")
 
     print("Downloaded and extracted commit.")
+
+
+def download_extract_library():
+    # TODO: Download latest & Remove other download functions
+
+    print("Downloading 0.7.0 libraries...")
+
+    URL = "https://github.com/kadir014/nova-physics/releases/download/0.7.0/nova-physics-0.7.0-devel.tar.gz"
+
+    response = urllib.request.urlopen(URL)
+
+    data = response.read()
+
+    with tarfile.open(mode="r:gz", fileobj=io.BytesIO(data)) as tar:
+        tar.extractall(BUILD_PATH)
+
+    print("Downloaded and extracted 0.7.0 libraries.")
 
 
 def get_version() -> str:
@@ -146,32 +162,38 @@ if __name__ == "__main__":
 
     # Download latest or nightly Nova Physics release
 
-    if DOWNLOAD_NIGHTLY:
-        download_nightly()
-    else:
-        download_latest()
+    # if DOWNLOAD_NIGHTLY:
+    #     download_nightly()
+    # else:
+    #     download_latest()
 
+    # extension = Extension(
+    #     name = "nova",
+    #     sources = get_sources(),
+    #     include_dirs = [str(NOVA_PATH / "include"), str(BASE_PATH / "src")],
+    #     extra_compile_args=[
+    #         "-DNV_USE_SIMD",
+    #         #"-DNV_USE_FLOAT",
+    #         "/Ox",
+    #         #"-g0",
+    #         "-Wall"
+    #     ]
+    # )
+        
+    download_extract_library()
 
     extension = Extension(
         name = "nova",
-        sources = get_sources(),
-        include_dirs = [str(NOVA_PATH / "include"), str(BASE_PATH / "src")],
-        extra_compile_args=[
-            "-DNV_USE_SIMD",
-            "-DNV_USE_FLOAT",
-            "-Os",
-            "-g0",
-            "-Wall",
-            # These two are from here:
-            # https://github.com/emscripten-core/emscripten/issues/16305#issuecomment-1152996151
-            "-Wbad-function-cast",
-            "-Wcast-function-type"
-        ]
+        sources = [str(BASE_PATH / "src" / "py_nova.c")],
+        include_dirs = [str(BUILD_PATH / "include")],
+        library_dirs = [str(BASE_PATH / "lib")],#[str(BUILD_PATH / "lib" / "VS-x86")],
+        libraries=["nova"],
+        #extra_link_args = ["nova.lib",]
     )
 
     setup(
         name = "nova",
-        version = get_version(),
+        version = "0.0.0",
         description = "Nova Physics Engine",
         ext_modules = [extension]
     )
@@ -179,15 +201,18 @@ if __name__ == "__main__":
 
     # Python 3.10 -> lib.win-amd64-3.10        / nova.cp310-win_amd64.pyd
     # Python 3.11 -> lib.win-amd64-cpython-311 / nova.cp311-win_amd64.pyd
+    generated = BASE_PATH / "build" / "lib.win-amd64-cpython-310" / "nova.cp310-win_amd64.pyd"
 
-    print("Moving the compiled module as nova.pyd to working directory.")
+    if os.path.exists(generated):
+        print("Moving the compiled module as nova.pyd to working directory.")
 
-    # Copy extension build to working directory as "nova.pyd"
-    if os.path.exists(BASE_PATH / "nova.pyd"):
-        os.remove(BASE_PATH / "nova.pyd")
+        # Copy extension build to working directory as "nova.pyd"
+        if os.path.exists(BASE_PATH / "nova.pyd"):
+            os.remove(BASE_PATH / "nova.pyd")
 
-    shutil.copyfile(BASE_PATH / "build" / "lib.win-amd64-cpython-310" / "nova.cp310-win_amd64.pyd", BASE_PATH / "nova.pyd")
+        shutil.copyfile(generated, BASE_PATH / "nova.pyd")
 
-    print("Moved succesfully.")
-    print()
+        print("Moved succesfully.")
+        print()
+
     print(f"Succesfully built Nova in {round(time() - start, 2)}s.")

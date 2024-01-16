@@ -466,27 +466,6 @@ static PyObject *nvBodyObject_apply_impulse(
     Py_RETURN_NONE;
 }
 
-static PyObject *nvBodyObject_set_mass(
-    nvBodyObject *self,
-    PyObject *args
-) {
-    double mass;
-
-    if (!PyArg_ParseTuple(args, "d", &mass))
-        return NULL;
-
-    nvBody_set_mass(self->body, mass);
-
-    Py_RETURN_NONE;
-}
-
-static PyObject *nvBodyObject_get_mass(
-    nvBodyObject *self,
-    PyObject *Py_UNUSED(ignored)
-) {
-    return PyFloat_FromDouble(self->body->mass);
-}
-
 static PyObject *nvBodyObject_set_inertia(
     nvBodyObject *self,
     PyObject *args
@@ -600,18 +579,6 @@ static PyMethodDef nvBodyObject_methods[] = {
     },
 
     {
-        "set_mass",
-        (PyCFunction)nvBodyObject_set_mass, METH_VARARGS,
-        ""
-    },
-
-    {
-        "get_mass",
-        (PyCFunction)nvBodyObject_get_mass, METH_NOARGS,
-        ""
-    },
-
-    {
         "set_inertia",
         (PyCFunction)nvBodyObject_set_inertia, METH_VARARGS,
         ""
@@ -650,6 +617,39 @@ static PyMethodDef nvBodyObject_methods[] = {
     {NULL} // Sentinel
 };
 
+static PyObject *nvBodyObject_get_mass(nvBodyObject *self, void *closure) {
+    return PyFloat_FromDouble(self->body->mass);
+}
+
+static int nvBodyObject_set_mass(nvBodyObject *self, PyObject *value, void *closure) {
+    if (value == NULL) {
+        PyErr_SetString(PyExc_TypeError, "Cannot delete the property.");
+        return -1;
+    }
+
+    if (!PyFloat_Check(value)) {
+        PyErr_SetString(PyExc_TypeError, "Value must be a float.");
+        return -1;
+    }
+
+    nvBody_set_mass(self->body, PyFloat_AS_DOUBLE(value));
+
+    return 0;
+}
+
+/**
+ * Body object property interface
+ */
+static PyGetSetDef nvBodyObject_properties[] = {
+    {
+        "mass",
+        (getter)nvBodyObject_get_mass, (setter)nvBodyObject_set_mass,
+        "", NULL
+    },
+
+    {NULL}  // Sentinel
+};
+
 PyTypeObject nvBodyObjectType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "nova.Body",
@@ -661,7 +661,8 @@ PyTypeObject nvBodyObjectType = {
     .tp_dealloc = (destructor)nvBodyObject_dealloc,
     .tp_init = (initproc)nvBodyObject_init,
     .tp_methods = nvBodyObject_methods,
-    .tp_members = nvBodyObject_members
+    .tp_members = nvBodyObject_members,
+    .tp_getset = nvBodyObject_properties
 };
 
 

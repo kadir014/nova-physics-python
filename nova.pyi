@@ -90,12 +90,6 @@ class Body:
     def apply_impulse(self, force: Vector2, position: Vector2) -> None: ...
 
     @overload
-    def set_mass(self, mass: float) -> None: ...
-
-    @overload
-    def get_mass(self) -> float: ...
-
-    @overload
     def set_inertia(self, inertia: float) -> None: ...
 
     @overload
@@ -112,6 +106,15 @@ class Body:
 
     @overload
     def set_collision_group(self, group: int) -> None: ...
+
+    @property
+    @overload
+    def mass(self) -> float: ...
+
+    @property
+    @overload
+    def mass(self, value: float) -> None: ...
+
 
 
 @overload
