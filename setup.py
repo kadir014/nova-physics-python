@@ -201,12 +201,12 @@ if __name__ == "__main__":
             #extra_link_args = ["nova.lib",]
         )
 
-        setup(
-            name = "nova",
-            version = "0.0.0",
-            description = "Nova Physics Engine",
-            ext_modules = [extension]
-        )
+    setup(
+        name = "nova",
+        version = "0.0.0",
+        description = "Nova Physics Engine",
+        ext_modules = [extension]
+    )
 
 
     # Python 3.10 -> lib.win-amd64-3.10        / nova.cp310-win_amd64.pyd
