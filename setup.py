@@ -172,7 +172,7 @@ if __name__ == "__main__":
     #     download_latest()
         
     if BUILD_WEB:
-        download_latest()
+        download_nightly()
 
         print("Building for web.")
 
@@ -180,13 +180,13 @@ if __name__ == "__main__":
             name = "nova",
             sources = get_sources(),
             include_dirs = [str(NOVA_PATH / "include"), str(BASE_PATH / "src")],
-            extra_compile_args=[
-                #"-DNV_USE_SIMD",
-                #"-DNV_USE_FLOAT",
-                "-O3",
-                #"-g0",
-                "-Wall"
-            ]
+            # extra_compile_args=[
+            #     #"-DNV_USE_SIMD",
+            #     #"-DNV_USE_FLOAT",
+            #     "-O3",
+            #     #"-g0",
+            #     "-Wall"
+            # ]
         )
 
     else:
