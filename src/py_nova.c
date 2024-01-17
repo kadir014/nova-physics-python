@@ -101,7 +101,10 @@ static int nvVector2Object_init(
 }
 
 
-static PyObject *nvVector2Object___repr__(nvVector2Object* self) {
+static PyObject *nvVector2Object___repr__(
+    nvVector2Object* self, 
+    PyObject *Py_UNUSED(ignored)
+) {
     return PyUnicode_FromFormat("<Vector2(%g, %g)>", self->x, self->y);
 }
 
