@@ -20,14 +20,15 @@ import nova
 # Create the space instance
 space = nova.Space()
 
-# Create a body with box shape
-body = nova.Rect(
-    nova.DYNAMIC,      # Type of the body
-    nova.Vector2(0, 0) # Initial position
-    0,                 # Initial rotation
-    0.1,               # Restitution
-    0.35,              # Friction
-    5, 5               # Width & height of the rect shape
+# Create a rigid body with box shape
+body = nova.create_rect(
+    nova.DYNAMIC,       # Type of the body
+    nova.Vector2(0, 0), # Initial position
+    0,                  # Initial rotation
+    1.0                 # Density
+    0.1,                # Restitution
+    0.35,               # Friction
+    5, 5                # Width & height of the rect shape
 )
 
 # Add body to the space
@@ -40,8 +41,8 @@ while True:
         1 / 60, # Timestep (delta time)
         10, # Velocity iterations
         10, # Position iterations
-        5, # Constraint iterations
-        1 # Substeps
+        5,  # Constraint iterations
+        1   # Substeps
     )
 ```
 
