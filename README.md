@@ -22,13 +22,13 @@ space = nova.Space()
 
 # Create a rigid body with box shape
 body = nova.create_rect(
-    nova.DYNAMIC,       # Type of the body
-    nova.Vector2(0, 0), # Initial position
-    0,                  # Initial rotation
-    1.0                 # Density
-    0.1,                # Restitution
-    0.35,               # Friction
-    5, 5                # Width & height of the rect shape
+    nova.DYNAMIC, # Type of the body
+    0.0, 0.0,     # Initial position
+    0.0,          # Initial rotation
+    1.0,          # Density
+    0.1,          # Restitution
+    0.35,         # Friction
+    5, 5          # Width & height of the rect shape
 )
 
 # Add body to the space

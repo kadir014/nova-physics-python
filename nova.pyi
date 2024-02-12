@@ -56,6 +56,9 @@ class Space:
     @overload
     def set_kill_bounds(self, min_x: float, min_y: float, max_x: float, max_y: float) -> None: ...
 
+    @overload
+    def set_gravity(self, x: float, y: float) -> None: ...
+
 
 class Body:
     type: int

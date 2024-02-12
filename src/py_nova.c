@@ -4,7 +4,7 @@
 #include "novaphysics/novaphysics.h"
 
 
-#define NOVA_PYTHON_VERSION "0.0.2"
+#define NOVA_PYTHON_VERSION "0.0.3"
 
 
 
@@ -1108,6 +1108,21 @@ static PyObject *nvSpaceObject_set_kill_bounds(
     Py_RETURN_NONE;
 }
 
+static PyObject *nvSpaceObject_set_gravity(
+    nvSpaceObject *self,
+    PyObject *args
+) {
+    double x;
+    double y;
+
+    if (!PyArg_ParseTuple(args, "dd", &x, &y))
+        return NULL;
+
+    self->space->gravity = NV_VEC2(x, y);
+
+    Py_RETURN_NONE;
+}
+
 /**
  * Space object method interface
  */
@@ -1169,6 +1184,12 @@ static PyMethodDef nvSpaceObject_methods[] = {
     {
         "set_kill_bounds",
         (PyCFunction)nvSpaceObject_set_kill_bounds, METH_VARARGS,
+        ""
+    },
+
+    {
+        "set_gravity",
+        (PyCFunction)nvSpaceObject_set_gravity, METH_VARARGS,
         ""
     },
 
