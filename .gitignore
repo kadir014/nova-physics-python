@@ -17,6 +17,7 @@ archive.py
 keybinds.py
 dev/
 novaphysics_cdef.h
+test_*.py
 
 # Prerequisites
 *.d

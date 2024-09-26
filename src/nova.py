@@ -45,6 +45,14 @@ class Profiler:
     bvh_build: float = 0.0
 
 
+@dataclass
+class RayCastResult:
+    position: Vector2
+    normal: Vector2
+    body: "RigidBody"
+    shape: "Shape"
+
+
 class BroadPhaseAlgorithm(Enum):
     BRUTE_FORCE = 0
     BVH = 1
@@ -62,6 +70,12 @@ class Space:
 
     def __del__(self) -> None:
         lib.nvSpace_free(self._space)
+
+    def _get_body_by_pointer(self, cbody) -> Optional["RigidBody"]:
+        for body in self._body_ref:
+            if body._rigidbody == cbody:
+                return body
+        return None
 
     def add_rigidbody(self, body: "RigidBody") -> None:
         body._refd = True
@@ -86,6 +100,33 @@ class Space:
 
         self.profiler.step = self._space.profiler.step
         self.profiler.bvh_build = self._space.profiler.bvh_build
+
+    def cast_ray(self, ray_from: Vector2, ray_to: Vector2) -> list[RayCastResult]:
+        from_ = ray_from.to_tuple()
+        to_ = ray_to.to_tuple()
+        capacity = 512
+
+        results_ = ffi.new(f"nvRayCastResult[{capacity}]")
+        num_hits_ = ffi.new(f"size_t*")
+
+        lib.nvSpace_cast_ray(self._space, from_, to_, results_, num_hits_, capacity)
+
+        num_hits = int(num_hits_[0])
+        results = []
+
+        for i in range(num_hits):
+            result = results_[i]
+            body = self._get_body_by_pointer(result.body)
+            shape = body._get_shape_by_pointer(result.shape)
+
+            results.append(RayCastResult(
+                Vector2(result.position.x, result.position.y),
+                Vector2(result.normal.x, result.normal.y),
+                body,
+                shape
+            ))
+
+        return results
 
     @property
     def broadphase(self) -> BroadPhaseAlgorithm:
@@ -193,6 +234,12 @@ class RigidBody:
         # Clear all references to shapes so they can get cleaned up by GC
         for shape in self._shape_ref: shape._refd = False
         self._shape_ref.clear()
+
+    def _get_shape_by_pointer(self, cshape) -> Optional[Shape]:
+        for shape in self._shape_ref:
+            if shape._shape == cshape:
+                return shape
+        return None
 
     def add_shape(self, shape: Shape) -> None:
         shape._refd = True

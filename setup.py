@@ -34,7 +34,7 @@ def download_nightly():
     print("Downloading latest commit...")
 
     response = urllib.request.urlopen(
-        f"https://github.com/kadir014/nova-physics/archive/refs/heads/rewrite.tar.gz"
+        f"https://github.com/kadir014/nova-physics/archive/refs/heads/main.tar.gz"
     )
 
     data = response.read()
@@ -42,7 +42,7 @@ def download_nightly():
     with tarfile.open(mode="r:gz", fileobj=io.BytesIO(data)) as tar:
         tar.extractall(BUILD_PATH)
 
-    os.rename(BUILD_PATH / "nova-physics-rewrite", BUILD_PATH / "nova-physics")
+    os.rename(BUILD_PATH / "nova-physics-main", BUILD_PATH / "nova-physics")
 
     print("Downloaded and extracted commit.")
 
