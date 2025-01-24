@@ -2,12 +2,17 @@ from typing import Type, TypeVar, Optional
 
 from dataclasses import dataclass
 from enum import Enum
-from math import sqrt
+from math import sqrt, cos, sin
 
 import _nova
 
 lib = _nova.lib
 ffi = _nova.ffi
+
+__version_major__ = 0
+__version_minor__ = 1
+__version_patch__ = 0
+__version__ = f"{__version_major__}.{__version_minor__}.{__version_patch__}"
 
 
 def get_error_buffer() -> str:
@@ -22,10 +27,12 @@ class DuplicateError(Exception):
     """ Either a body or constraint is added to space more than once. """
 
 
-@dataclass
 class Vector2:
-    x: float
-    y: float
+    __slots__ = ("x", "y")
+    
+    def __init__(self, x: float, y: float) -> None:
+        self.x = x
+        self.y = y
 
     def to_tuple(self) -> tuple[float, float]:
         return (self.x, self.y)
@@ -39,15 +46,80 @@ class Vector2:
     def __mul__(self, scalar: float) -> "Vector2":
         return Vector2(self.x * scalar, self.y * scalar)
     
+    def __eq__(self, vector: "Vector2") -> bool:
+        return self.x == vector.x and self.y == vector.y
+    
+    def __neg__(self) -> "Vector2":
+        return Vector2(-self.x, -self.y)
+    
+    def rotate(self, angle: float) -> "Vector2":
+        c = cos(angle)
+        s = sin(angle)
+        return Vector2(c * self.x - s * self.y, s * self.x + c * self.y)
+    
+    def perp(self) -> "Vector2":
+        return Vector2(-self.y, self.x)
+    
+    def perpr(self) -> "Vector2":
+        return Vector2(self.y, -self.x)
+    
     def len2(self) -> float:
         return self.x * self.x + self.y * self.y
     
     def len(self) -> float:
         return sqrt(self.len2())
     
+    def dot(self, vector: "Vector2") -> float:
+        return self.x * vector.x + self.y * vector.y
+    
+    def cross(self, vector: "Vector2") -> float:
+        return self.x * vector.y - self.y * vector.x
+    
+    def dist2(self, vector: "Vector2") -> float:
+        return (vector.x - self.x) * (vector.x - self.x) + (vector.y - self.y) * (vector.y - self.y)
+    
+    def dist(self, vector: "Vector2") -> float:
+        return sqrt(self.dist2(vector))
+    
+    def normalize(self) -> "Vector2":
+        return self / self.len()
+    
+    def lerp(self, vector: "Vector2", t: float) -> "Vector2":
+        return Vector2((1.0 - t) * self.x + t * vector.x, (1.0 - t) * self.y + t * vector.y)
+    
 
 @dataclass
 class Profiler:
+    """
+    Physics frame profiler. Timings are in seconds.
+
+    Attributes
+    ----------
+    step
+        Time spent in one simulation step.
+    broadphase
+        Time spent for broadphase.
+    broadphase_finalize
+        Time spent finalizing broadphase.
+    bvh_build
+        Time spent constructing the BVH-tree.
+    bvh_traverse
+        Time spent traversing the BVH-tree.
+    bvh_free
+        Time spent destroying the BVH-tree.
+    narrowphase
+        Time spent for narrowphase.
+    integrate_accelerations
+        Time spend integrating accelerations.
+    presolve
+        Time spent preparing constraints for solving.
+    warmstart
+        Time spent warmstarting constraints.
+    solve_velocities
+        Time spent solving velocity constraints.
+    integrate_velocities
+        Time spent integrating velocities.
+    """
     step: float = 0.0
     broadphase: float = 0.0
     broadphase_finalize: float = 0.0

@@ -1,7 +1,7 @@
 [project]
 name = "nova"
 description = "Nova Physics Engine Python Binding"
-version = "0.0.1"
+version = "0.1.0"
 readme = "README.md"
 authors = [
     {name="Kadir Aksoy"},
@@ -10,10 +10,13 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Topic :: Games/Entertainment"
+    "Programming Language :: Python :: 3",
 ]
 dependencies = [
     "cffi >= 1.17.0",
 ]
+requires-python = ">=3.10"
 
 [project.urls]
 homepage = "https://github.com/kadir014/nova-physics-python"
