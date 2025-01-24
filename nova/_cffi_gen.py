@@ -1,4 +1,28 @@
-cdef_source = """
+import os
+import platform
+
+from cffi import FFI
+
+
+RELEASE_BUILD = True
+
+MSVC_COMPILER_ARGS = (
+    "/arch:AVX2",
+    "/D_CRT_SECURE_NO_WARNINGS",
+    "/DNV_ENABLE_PROFILER"
+)
+
+GCC_COMPILER_ARGS = (
+    "-march=native",
+    "-D_POSIX_C_SOURCE=200809L",
+    "-DNV_ENABLE_PROFILER"
+)
+
+
+def generate_cdef() -> None:
+    """ Generate cdef header. """
+    
+    cdef_source = """
 typedef float nv_float;
 typedef int8_t nv_int8;
 typedef int16_t nv_int16;
@@ -43,30 +67,25 @@ typedef struct {
 char *nv_get_error();
 """
 
-includes = (
-    "core/array.h",
-    "core/hashmap.h",
-    "core/pool.h",
-    "aabb.h",
-    "material.h",
-    "shape.h",
-    "body.h",
-    "contact.h",
-    "collision.h",
-    "constraints/constraint.h",
-    "constraints/contact_constraint.h",
-    "constraints/distance_constraint.h",
-    "constraints/hinge_constraint.h",
-    "constraints/spline_constraint.h",
-    "broadphase.h",
-    "space_settings.h",
-    "space.h",
-)
-
-
-def generate() -> None:
-    """ Generate cdef header. """
-    global cdef_source
+    includes = (
+        "core/array.h",
+        "core/hashmap.h",
+        "core/pool.h",
+        "aabb.h",
+        "material.h",
+        "shape.h",
+        "body.h",
+        "contact.h",
+        "collision.h",
+        "constraints/constraint.h",
+        "constraints/contact_constraint.h",
+        "constraints/distance_constraint.h",
+        "constraints/hinge_constraint.h",
+        "constraints/spline_constraint.h",
+        "broadphase.h",
+        "space_settings.h",
+        "space.h",
+    )
 
     for include in includes:
         bracket = 0
@@ -102,3 +121,39 @@ def generate() -> None:
 
     with open("novaphysics_cdef.h", "w") as f:
         f.write(cdef_source)
+
+
+generate_cdef()
+
+ffibuilder = FFI()
+
+with open("novaphysics_cdef.h", "r") as f:
+    ffibuilder.cdef(f.read())
+
+src_path = "build/nova-physics/src"
+sources = []
+for root, _, files in os.walk(src_path):
+    for file in files:
+        sources.append(os.path.join(root, file))
+
+c_args = []
+
+if platform.system() == "Windows":
+    c_args += MSVC_COMPILER_ARGS
+else:
+    c_args += GCC_COMPILER_ARGS
+
+ffibuilder.set_source(
+    "_nova",
+    """
+    #include \"novaphysics/internal.h\"
+    #include \"novaphysics/novaphysics.h\"
+    """,
+    sources=sources,
+    include_dirs=["build/nova-physics/include/"],
+    extra_compile_args=c_args
+)
+
+
+if __name__ == "__main__":
+    ffibuilder.compile(verbose=False, debug=not RELEASE_BUILD)

@@ -19,6 +19,7 @@ dev/
 novaphysics_cdef.h
 test_*.py
 dist/
+*.egg-info/
 
 # Prerequisites
 *.d

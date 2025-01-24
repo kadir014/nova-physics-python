@@ -1,20 +1,18 @@
 [project]
-name = "nova-physics-python"
+name = "nova"
 description = "Nova Physics Engine Python Binding"
-version = "1.0.0"
+version = "0.0.1"
 readme = "README.md"
-
 authors = [
-    {name="Kadir Aksoy"}
+    {name="Kadir Aksoy"},
 ]
-
 classifiers = [
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License"
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
 ]
-
 dependencies = [
-    "cffi"
+    "cffi >= 1.17.0",
 ]
 
 [project.urls]
@@ -22,5 +20,8 @@ homepage = "https://github.com/kadir014/nova-physics-python"
 bugtracker = "https://github.com/kadir014/nova-physics-python/issues"
 
 [build-system]
-requires = ["setuptools"]
+requires = [
+    "setuptools",
+    "cffi >= 1.17.0",
+]
 build-backend = "setuptools.build_meta"

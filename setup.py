@@ -49,7 +49,6 @@ def download_nightly() -> None:
 download_nightly()
 
 setup(
-    setup_requires=["cffi>=1.0.0"],
-    cffi_modules=["src/cffi_comp.py:ffibuilder"],
-    install_requires=["cffi>=1.0.0"]
+    packages=["nova"],
+    cffi_modules=["nova/_cffi_gen.py:ffibuilder"],
 )
