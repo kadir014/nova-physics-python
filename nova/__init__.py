@@ -15,6 +15,13 @@ def get_error_buffer() -> str:
     return error_buf.decode("utf-8")
 
 
+class NovaError(Exception):
+    """ A low-level error occured in the C library. """
+
+class DuplicateError(Exception):
+    """ Either a body or constraint is added to space more than once. """
+
+
 @dataclass
 class Vector2:
     x: float
@@ -76,7 +83,7 @@ class Space:
         self.profiler = Profiler()
 
         if self._space == ffi.NULL:
-            raise Exception(get_error_buffer())
+            raise NovaError(get_error_buffer())
 
     def __del__(self) -> None:
         lib.nvSpace_free(self._space)
@@ -89,14 +96,17 @@ class Space:
 
     def add_rigidbody(self, body: "RigidBody") -> None:
         body._refd = True
-        if (lib.nvSpace_add_rigidbody(self._space, body._rigidbody)):
-            raise Exception(get_error_buffer())
+        ret = lib.nvSpace_add_rigidbody(self._space, body._rigidbody)
+        if ret == 2:
+            raise DuplicateError("Can't add same body to same space more than once.")
+        elif ret == 1:
+            raise NovaError(get_error_buffer())
         self._body_ref.append(body)
 
     def remove_rigidbody(self, body: "RigidBody") -> None:
         body._refd = False
-        if (lib.nvSpace_remove_rigidbody(self._space, body._rigidbody)):
-            raise Exception(get_error_buffer())
+        if lib.nvSpace_remove_rigidbody(self._space, body._rigidbody):
+            raise NovaError(get_error_buffer())
         self._body_ref.remove(body)
 
     def add_constraint(self, constraint: Type["ConstraintT"]) -> None:
@@ -168,7 +178,7 @@ class Shape:
         self._refd = False
 
         if self._shape == ffi.NULL:
-            raise Exception(get_error_buffer())
+            raise NovaError(get_error_buffer())
 
     def __del__(self) -> None:
         if self._refd: return
@@ -245,7 +255,7 @@ class RigidBody:
         self._shape_ref = []
 
         if self._rigidbody == ffi.NULL:
-            raise Exception(get_error_buffer())
+            raise NovaError(get_error_buffer())
 
     def __del__(self) -> None:
         if self._refd: return
@@ -264,13 +274,13 @@ class RigidBody:
     def add_shape(self, shape: Shape) -> None:
         shape._refd = True
         if (lib.nvRigidBody_add_shape(self._rigidbody, shape._shape)):
-            Exception(get_error_buffer())
+            raise NovaError(get_error_buffer())
         self._shape_ref.append(shape)
 
     def remove_shape(self, shape: Shape) -> None:
         shape._refd = False
         if (lib.nvRigidBody_remove_shape(self._rigidbody, shape._shape)):
-            raise Exception(get_error_buffer())
+            raise NovaError(get_error_buffer())
         self._shape_ref.remove(shape)
 
     @property
