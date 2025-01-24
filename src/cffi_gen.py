@@ -25,19 +25,19 @@ typedef struct {
 } nvTransform;
 
 typedef struct {
-    double step; /**< Time spent in one simulation step. */
-    double broadphase; /**< Time spent for broadphase. */
-    double broadphase_finalize; /**< Time spent finalizing broadphase. */
-    double bvh_free; /**< Time spent destroying BVH-tree. */
-    double bvh_build; /**< Time spent building BVH-tree. */
-    double bvh_traverse; /**< Time spent traversing BVH-tree. */
-    double narrowphase; /**< Time spent for narrowphase. */
-    double integrate_accelerations; /**< Time spent integrating accelerations. */
-    double presolve; /**< Time spent preparing constraints for solving. */
-    double warmstart; /**< Time spent warmstarting constraints. */
-    double solve_velocities; /**< Time spent solving velocity constraints. */
-    double solve_positions; /**< Time spent for NGS. */
-    double integrate_velocities; /**< Time spent integrating velocities. */
+    double step;
+    double broadphase;
+    double broadphase_finalize;
+    double bvh_free;
+    double bvh_build;
+    double bvh_traverse;
+    double narrowphase;
+    double integrate_accelerations;
+    double presolve;
+    double warmstart;
+    double solve_velocities;
+    double solve_positions;
+    double integrate_velocities;
 } nvProfiler;
 
 char *nv_get_error();
@@ -62,7 +62,8 @@ includes = (
     "space_settings.h",
     "space.h",
 )
-import os
+
+
 def generate() -> None:
     """ Generate cdef header. """
     global cdef_source

@@ -6,6 +6,21 @@ from cffi import FFI
 from src.cffi_gen import generate
 
 
+RELEASE_BUILD = True
+
+MSVC_COMPILER_ARGS = (
+    "/arch:AVX2",
+    "/D_CRT_SECURE_NO_WARNINGS",
+    "/DNV_ENABLE_PROFILER"
+)
+
+GCC_COMPILER_ARGS = (
+    "-march=native",
+    "-D_POSIX_C_SOURCE=200809L",
+    "-DNV_ENABLE_PROFILER"
+)
+
+
 generate()
 
 ffibuilder = FFI()
@@ -22,13 +37,9 @@ for root, _, files in os.walk(src_path):
 c_args = []
 
 if platform.system() == "Windows":
-    c_args.append("/arch:AVX2")
-    c_args.append("/D_CRT_SECURE_NO_WARNINGS")
-    c_args.append("/DNV_ENABLE_PROFILER")
+    c_args += MSVC_COMPILER_ARGS
 else:
-    c_args.append("-march=native")
-    c_args.append("-D_POSIX_C_SOURCE=200809L")
-    c_args.append("-DNV_ENABLE_PROFILER")
+    c_args += GCC_COMPILER_ARGS
 
 ffibuilder.set_source(
     "_nova",
@@ -43,4 +54,4 @@ ffibuilder.set_source(
 
 
 if __name__ == "__main__":
-    ffibuilder.compile(verbose=False, debug=False)
+    ffibuilder.compile(verbose=False, debug=not RELEASE_BUILD)

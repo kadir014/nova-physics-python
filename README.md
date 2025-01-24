@@ -1,7 +1,5 @@
 # Python binding for [Nova Physics Engine](https://github.com/kadir014/nova-physics)
 
-Rewrite
-
 
 
 # Requirements

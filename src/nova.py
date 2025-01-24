@@ -42,7 +42,17 @@ class Vector2:
 @dataclass
 class Profiler:
     step: float = 0.0
+    broadphase: float = 0.0
+    broadphase_finalize: float = 0.0
     bvh_build: float = 0.0
+    bvh_traverse: float = 0.0
+    bvh_free: float = 0.0
+    narrowphase: float = 0.0
+    integrate_accelerations: float = 0.0
+    presolve: float = 0.0
+    warmstart: float = 0.0
+    solve_velocities: float = 0.0
+    integrate_velocities: float = 0.0
 
 
 @dataclass
@@ -99,7 +109,17 @@ class Space:
         lib.nvSpace_step(self._space, dt)
 
         self.profiler.step = self._space.profiler.step
+        self.profiler.broadphase = self._space.profiler.broadphase
+        self.profiler.broadphase_finalize = self._space.profiler.broadphase_finalize
         self.profiler.bvh_build = self._space.profiler.bvh_build
+        self.profiler.bvh_traverse = self._space.profiler.bvh_traverse
+        self.profiler.bvh_free = self._space.profiler.bvh_free
+        self.profiler.narrowphase = self._space.profiler.narrowphase
+        self.profiler.integrate_accelerations = self._space.profiler.integrate_accelerations
+        self.profiler.presolve = self._space.profiler.presolve
+        self.profiler.warmstart = self._space.profiler.warmstart
+        self.profiler.solve_velocities = self._space.profiler.solve_velocities
+        self.profiler.integrate_velocities = self._space.profiler.integrate_velocities
 
     def cast_ray(self, ray_from: Vector2, ray_to: Vector2) -> list[RayCastResult]:
         from_ = ray_from.to_tuple()

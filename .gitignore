@@ -18,6 +18,7 @@ keybinds.py
 dev/
 novaphysics_cdef.h
 test_*.py
+dist/
 
 # Prerequisites
 *.d
