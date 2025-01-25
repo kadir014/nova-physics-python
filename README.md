@@ -6,6 +6,7 @@ Python bindings using CFFI for Nova Physics Engine.
 # Requirements
 - [Python](https://www.python.org/downloads/) (3.10+)
 - [Setuptools](https://pypi.org/project/setuptools/)
+- [Build](https://pypi.org/project/build/)
 
 
 
