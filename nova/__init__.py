@@ -1,4 +1,5 @@
 from typing import Type, TypeVar, Optional
+from collections.abc import Iterator
 
 from dataclasses import dataclass
 from enum import Enum
@@ -11,7 +12,7 @@ ffi = _nova.ffi
 
 __version_major__ = 0
 __version_minor__ = 1
-__version_patch__ = 0
+__version_patch__ = 1
 __version__ = f"{__version_major__}.{__version_minor__}.{__version_patch__}"
 
 
@@ -33,6 +34,9 @@ class Vector2:
     def __init__(self, x: float, y: float) -> None:
         self.x = x
         self.y = y
+
+    def __repr__(self) -> str:
+        return f"<nova.Vector2({round(self.x, 3)}, {round(self.y, 3)})>"
 
     def to_tuple(self) -> tuple[float, float]:
         return (self.x, self.y)
@@ -86,7 +90,31 @@ class Vector2:
     
     def lerp(self, vector: "Vector2", t: float) -> "Vector2":
         return Vector2((1.0 - t) * self.x + t * vector.x, (1.0 - t) * self.y + t * vector.y)
+
+
+@dataclass
+class AABB:
+    """
+    Axis-aligned bounding box.
+    """
+
+    min_x: float
+    min_y: float
+    max_x: float
+    max_y: float
+
+    def collide_aabb(self, aabb: "AABB") -> bool:
+        """ Check collision against another AABB. """
     
+        return not (self.max_x <= aabb.min_x or aabb.max_x <= self.min_x or
+                    self.max_y <= aabb.min_y or aabb.max_y <= self.min_y)
+
+    def collide_point(self, point: Vector2) -> bool:
+        """ Check if point is inside AABB. """
+
+        return (self.min_x <= point.x and point.x <= self.max_x and
+                self.min_y <= point.y and point.y <= self.max_y)
+
 
 @dataclass
 class Profiler:
@@ -187,6 +215,18 @@ class Space:
     def remove_constraint(self, constraint: Type["ConstraintT"]) -> None:
         lib.nvSpace_remove_constraint(self._space, constraint._cons)
 
+    def iter_bodies(self) -> Iterator["RigidBody"]:
+
+        # ? Use _body_ref instead of allocation and calling nvSpace_iter_bodies
+
+        #body = ffi.new("nvRigidBody **")
+        #index = ffi.new("size_t *")
+        #while lib.nvSpace_iter_bodies(self._space, body, index):
+        #    yield self._get_body_by_pointer(body[0])
+
+        for body in self._body_ref:
+            yield body
+
     def step(self, dt: float) -> None:
         lib.nvSpace_step(self._space, dt)
 
@@ -209,7 +249,7 @@ class Space:
         capacity = 512
 
         results_ = ffi.new(f"nvRayCastResult[{capacity}]")
-        num_hits_ = ffi.new(f"size_t*")
+        num_hits_ = ffi.new("size_t *")
 
         lib.nvSpace_cast_ray(self._space, from_, to_, results_, num_hits_, capacity)
 
@@ -354,6 +394,15 @@ class RigidBody:
         if (lib.nvRigidBody_remove_shape(self._rigidbody, shape._shape)):
             raise NovaError(get_error_buffer())
         self._shape_ref.remove(shape)
+
+    def iter_shapes(self) -> Iterator[Shape]:
+        for shape in self._shape_ref:
+            yield shape
+
+    @property
+    def aabb(self) -> AABB:
+        aabb = lib.nvRigidBody_get_aabb(self._rigidbody)
+        return AABB(aabb.min_x, aabb.min_y, aabb.max_x, aabb.max_y)
 
     @property
     def position(self) -> Vector2:
