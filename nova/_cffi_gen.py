@@ -13,7 +13,8 @@ MSVC_COMPILER_ARGS = (
 )
 
 GCC_COMPILER_ARGS = (
-    "-march=native",
+    # Detect if building with python-wasm-sdk, emcc doesn't accept -march
+    #"-march=native",
     "-D_POSIX_C_SOURCE=200809L",
     "-DNV_ENABLE_PROFILER"
 )
