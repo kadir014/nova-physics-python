@@ -11,8 +11,8 @@ lib = _nova.lib
 ffi = _nova.ffi
 
 __version_major__ = 0
-__version_minor__ = 1
-__version_patch__ = 1
+__version_minor__ = 2
+__version_patch__ = 0
 __version__ = f"{__version_major__}.{__version_minor__}.{__version_patch__}"
 
 
@@ -148,6 +148,7 @@ class Profiler:
     integrate_velocities
         Time spent integrating velocities.
     """
+
     step: float = 0.0
     broadphase: float = 0.0
     broadphase_finalize: float = 0.0
@@ -175,17 +176,82 @@ class BroadPhaseAlgorithm(Enum):
     BVH = 1
 
 
+class SpaceSettings:
+    def __init__(self, space: "Space") -> None:
+        self.__settings = lib.nvSpace_get_settings(space._space)
+
+    @property
+    def baumgarte(self) -> float:
+        return self.__settings.baumgarte
+    
+    @baumgarte.setter
+    def baumgarte(self, value: float) -> None:
+        self.__settings.baumgarte = value
+
+    @property
+    def penetration_slop(self) -> float:
+        return self.__settings.penetration_slop
+    
+    @penetration_slop.setter
+    def penetration_slop(self, value: float) -> None:
+        self.__settings.penetration_slop = value
+
+    @property
+    def velocity_iterations(self) -> float:
+        return self.__settings.velocity_iterations
+    
+    @velocity_iterations.setter
+    def velocity_iterations(self, value: float) -> None:
+        self.__settings.velocity_iterations = value
+
+    @property
+    def substeps(self) -> int:
+        return self.__settings.substeps
+    
+    @substeps.setter
+    def substeps(self, value: int) -> None:
+        self.__settings.substeps = value
+
+    @property
+    def linear_damping(self) -> float:
+        return self.__settings.linear_damping
+    
+    @linear_damping.setter
+    def linear_damping(self, value: float) -> None:
+        self.__settings.linear_damping = value
+
+    @property
+    def angular_damping(self) -> float:
+        return self.__settings.angular_damping
+    
+    @angular_damping.setter
+    def angular_damping(self, value: float) -> None:
+        self.__settings.angular_damping = value
+
+    @property
+    def warmstarting(self) -> bool:
+        return self.__settings.warmstarting
+    
+    @warmstarting.setter
+    def warmstarting(self, value: bool) -> None:
+        self.__settings.warmstarting = value
+
 class Space:
     def __init__(self) -> None:
         self._space = lib.nvSpace_new()
         self._body_ref = [] # To keep bodies from GC'd
 
-        self.profiler = Profiler()
-
         if self._space == ffi.NULL:
             raise NovaError(get_error_buffer())
+        
+        self.profiler = Profiler()
+
+        self.settings = SpaceSettings(self)
 
     def __del__(self) -> None:
+
+        # TODO: nvSpace_free is going to free all bodies and shapes?
+
         lib.nvSpace_free(self._space)
 
     def _get_body_by_pointer(self, cbody) -> Optional["RigidBody"]:
@@ -199,7 +265,7 @@ class Space:
         ret = lib.nvSpace_add_rigidbody(self._space, body._rigidbody)
         if ret == 2:
             raise DuplicateError("Can't add same body to same space more than once.")
-        elif ret == 1:
+        elif ret != 0:
             raise NovaError(get_error_buffer())
         self._body_ref.append(body)
 
@@ -210,10 +276,15 @@ class Space:
         self._body_ref.remove(body)
 
     def add_constraint(self, constraint: Type["ConstraintT"]) -> None:
-        lib.nvSpace_add_constraint(self._space, constraint._cons)
+        ret = lib.nvSpace_add_constraint(self._space, constraint._cons)
+        if ret == 2:
+            raise DuplicateError("Can't add same constraint to same space more than once.")
+        elif ret != 0:
+            raise NovaError(get_error_buffer())
 
     def remove_constraint(self, constraint: Type["ConstraintT"]) -> None:
-        lib.nvSpace_remove_constraint(self._space, constraint._cons)
+        if lib.nvSpace_remove_constraint(self._space, constraint._cons):
+            raise NovaError(get_error_buffer())
 
     def iter_bodies(self) -> Iterator["RigidBody"]:
 
@@ -235,7 +306,6 @@ class Space:
         self.profiler.broadphase_finalize = self._space.profiler.broadphase_finalize
         self.profiler.bvh_build = self._space.profiler.bvh_build
         self.profiler.bvh_traverse = self._space.profiler.bvh_traverse
-        self.profiler.bvh_free = self._space.profiler.bvh_free
         self.profiler.narrowphase = self._space.profiler.narrowphase
         self.profiler.integrate_accelerations = self._space.profiler.integrate_accelerations
         self.profiler.presolve = self._space.profiler.presolve
@@ -296,39 +366,243 @@ class Shape:
         if self._refd: return
         lib.nvShape_free(self._shape)
 
-    @classmethod
-    def circle(cls, radius: float, center: Vector2 = Vector2(0.0, 0.0)):
-        shape = lib.nvCircleShape_new(center.to_tuple(), radius)
-        return cls(shape)
+    @property
+    def type(self) -> ShapeType:
+        return ShapeType(self._shape.type)
     
-    @classmethod
-    def polygon(cls, vertices: list[Vector2], offset: Vector2 = Vector2(0.0, 0.0)):
+    def transform(self, body: "RigidBody") -> None:
+        """
+        Transform the shape data to world space from local (body) space.
+
+        Shape subclasses must implement this function.
+
+        Parameters
+        ----------
+        body
+            Rigid body to use as the origin for transform
+        """
+        
+        raise NotImplementedError()
+
+class Polygon(Shape):
+    @property
+    def num_vertices(self) -> int:
+        """ Number of polygon vertices. """
+
+        return self._shape.polygon.num_vertices
+    
+    @property
+    def vertices(self) -> list[Vector2]:
+        """ Polygon vertices in local (body) space. """
+        
+        verts = []
+
+        for i in range(self._shape.polygon.num_vertices):
+            verts.append(Vector2(
+                self._shape.polygon.vertices[i].x,
+                self._shape.polygon.vertices[i].y
+            ))
+
+        return verts
+    
+    @property
+    def transformed_vertices(self) -> list[Vector2]:
+        """
+        Polygon transformed vertices in world space.
+        
+        You need to call `transform` method before accessing this property.
+        """
+        
+        verts = []
+
+        for i in range(self._shape.polygon.num_vertices):
+            verts.append(Vector2(
+                self._shape.polygon.xvertices[i].x,
+                self._shape.polygon.xvertices[i].y
+            ))
+
+        return verts
+    
+    def transform(self, body: "RigidBody") -> None:
+        """
+        Transform the shape data to world space from local (body) space.
+
+        Parameters
+        ----------
+        body
+            Rigid body to use as the origin for transform
+        """
+
+        lib.nvPolygon_transform(self._shape, (body._rigidbody.origin, body.angle))
+
+class Circle(Shape):
+    def __init__(self, cshape) -> None:
+        super().__init__(cshape)
+
+        self.__transformed_center = Vector2(-1, -1)
+
+    @property
+    def radius(self) -> float:
+        """ Radius of circle. """
+
+        return self._shape.circle.radius
+
+    @property
+    def center(self) -> Vector2:
+        """ Center of circle in local (body) space. """
+
+        return Vector2(self._shape.circle.center.x, self._shape.circle.center.y)
+    
+    @property
+    def transformed_center(self) -> Vector2:
+        """
+        Center of circle transformed in world space.
+        
+        You need to call `transform` method before accessing this property.
+        """
+
+        # TODO am i stupid this doesn't need to be a property
+
+        return self.__transformed_center
+
+    def transform(self, body: "RigidBody") -> None:
+        """
+        Transform the shape data to world space from local (body) space.
+
+        Parameters
+        ----------
+        body
+            Rigid body to use as the origin for transform
+        """
+
+        center = Vector2(self._shape.circle.center.x, self._shape.circle.center.y)
+        center = center.rotate(body.angle)
+        center.x += body._rigidbody.origin.x
+        center.y += body._rigidbody.origin.y
+
+        self.__transformed_center = center
+
+class ShapeFactory:
+    """
+    Factory class for creating common shapes.
+
+    Methods return specific subclasses of `Shape`, either `Circle` or `Polygon`
+    """
+
+    @staticmethod
+    def circle(radius: float, center: Vector2 = Vector2(0.0, 0.0)) -> Circle:
+        """
+        Create a circle shape.
+
+        Parameters
+        ----------
+        radius
+            Radius of the circle.
+        center
+            Center of the circle in local (body) space.
+        """
+
+        shape = lib.nvCircleShape_new(center.to_tuple(), radius)
+        if shape == ffi.NULL:
+            raise NovaError(get_error_buffer())
+        
+        return Circle(shape)
+    
+    @staticmethod
+    def polygon(
+            vertices: list[Vector2],
+            offset: Vector2 = Vector2(0.0, 0.0)
+        ) -> Polygon:
+        """
+        Create a convex polygon shape from given vertices.
+
+        Parameters
+        ----------
+        vertices
+            List of vertices in local (body) space.
+        offset
+            Offset of the polygon centroid from body origin.
+        """
+
         n = len(vertices)
         vertices_buf = ffi.new(f"nvVector2[{n}]")
         for i in range(n):
             vertices_buf[i] = (vertices[i].x, vertices[i].y)
 
         shape = lib.nvPolygonShape_new(vertices_buf, n, offset.to_tuple())
-        return cls(shape)
+        if shape == ffi.NULL:
+            raise NovaError(get_error_buffer())
 
-    @classmethod
-    def rect(cls, width: float, height: float, offset: Vector2 = Vector2(0.0, 0.0)):
+        return Polygon(shape)
+
+    @staticmethod
+    def rect(width: float, height: float, offset: Vector2 = Vector2(0.0, 0.0)) -> Polygon:
+        """
+        Create a rectangle shape with given dimensions.
+
+        Same as `box` method.
+
+        Parameters
+        ----------
+        width
+            Width of the rectangle.
+        height
+            Height of the rectangle.
+        offset
+            Offset of the polygon centroid from body origin.
+        """
+
         shape = lib.nvRectShape_new(width, height, offset.to_tuple())
-        return cls(shape)
+        if shape == ffi.NULL:
+            raise NovaError(get_error_buffer())
+        
+        return Polygon(shape)
     
-    @classmethod
-    def box(cls, width: float, height: float, offset: Vector2 = Vector2(0.0, 0.0)):
+    @staticmethod
+    def box(width: float, height: float, offset: Vector2 = Vector2(0.0, 0.0)) -> Polygon:
+        """
+        Create a rectangle shape with given dimensions.
+
+        Same as `rect` method.
+
+        Parameters
+        ----------
+        width
+            Width of the rectangle.
+        height
+            Height of the rectangle.
+        offset
+            Offset of the polygon centroid from body origin.
+        """
+
         shape = lib.nvRectShape_new(width, height, offset.to_tuple())
-        return cls(shape)
+        if shape == ffi.NULL:
+            raise NovaError(get_error_buffer())
+        
+        return Polygon(shape)
     
-    @classmethod
-    def ngon(cls, n: int, radius: float, offset: Vector2 = Vector2(0.0, 0.0)):
+    @staticmethod
+    def ngon(n: int, radius: float, offset: Vector2 = Vector2(0.0, 0.0)) -> Polygon:
+        """
+        Create a convex regular polygon with given number of vertices.
+
+        Same as `box` method.
+
+        Parameters
+        ----------
+        n
+            Number of vertices.
+        radius
+            Distance of one vertex to the polygon centroid.
+        offset
+            Offset of the polygon centroid from body origin.
+        """
+
         shape = lib.nvNGonShape_new(n, radius, offset.to_tuple())
-        return cls(shape)
-    
-    @property
-    def type(self) -> ShapeType:
-        return ShapeType(self._shape.type)
+        if shape == ffi.NULL:
+            raise NovaError(get_error_buffer())
+        
+        return Polygon(shape)
 
 
 @dataclass
@@ -350,6 +624,7 @@ class RigidBody:
             self,
             type: RigidBodyType = RigidBodyType.STATIC,
             position: Vector2 = Vector2(0.0, 0.0),
+            angle: float = 0.0,
             linear_velocity: Vector2 = Vector2(0.0, 0.0),
             angular_velocity: float = 0.0,
             material: Material = Material()
@@ -357,6 +632,7 @@ class RigidBody:
         init = lib.nvRigidBodyInitializer_default
         init.type = type.value
         init.position = position.to_tuple()
+        init.angle = angle
         init.linear_velocity = linear_velocity.to_tuple()
         init.angular_velocity = angular_velocity
         init.material = material.to_tuple()
@@ -373,8 +649,9 @@ class RigidBody:
         if self._refd: return
         lib.nvRigidBody_free(self._rigidbody)
 
-        # Clear all references to shapes so they can get cleaned up by GC
-        for shape in self._shape_ref: shape._refd = False
+        # Do not clear shape references
+        # because nvRigidBody_free already frees all shapes
+        # heap corruption -> for shape in self._shape_ref: shape._refd = False
         self._shape_ref.clear()
 
     def _get_shape_by_pointer(self, cshape) -> Optional[Shape]:
@@ -514,4 +791,3 @@ class HingeConstraint(Constraint):
         init.a = a._rigidbody
         init.b = b._rigidbody
         self._cons = lib.nvHingeConstraint_new(init)
-        
