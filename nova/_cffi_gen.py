@@ -53,7 +53,6 @@ typedef struct {
     double step;
     double broadphase;
     double broadphase_finalize;
-    double bvh_free;
     double bvh_build;
     double bvh_traverse;
     double narrowphase;
@@ -63,6 +62,7 @@ typedef struct {
     double solve_velocities;
     double solve_positions;
     double integrate_velocities;
+    double raycasts;
 } nvProfiler;
 
 char *nv_get_error();
@@ -85,6 +85,7 @@ char *nv_get_error();
         "constraints/spline_constraint.h",
         "broadphase.h",
         "space_settings.h",
+        "bvh.h",
         "space.h",
     )
 

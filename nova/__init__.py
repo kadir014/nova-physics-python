@@ -16,6 +16,23 @@ __version_patch__ = 0
 __version__ = f"{__version_major__}.{__version_minor__}.{__version_patch__}"
 
 
+EnforcedT = TypeVar("T")
+def _enforce(
+        name: str,
+        value: object,
+        expected_type: Type[EnforcedT]
+    ) -> EnforcedT:
+    """ Enforce the expected type, raise TypeError if fails. """
+
+    if not isinstance(value, expected_type):
+        raise TypeError(
+            f"Argument '{name}' must be {expected_type.__name__}, "
+            f"not {type(value).__name__}"
+        )
+
+    return value
+
+
 def get_error_buffer() -> str:
     error_buf = ffi.string(lib.nv_get_error())
     return error_buf.decode("utf-8")
@@ -29,11 +46,63 @@ class DuplicateError(Exception):
 
 
 class Vector2:
+    """
+    2D vector type.
+
+    Attributes
+    ----------
+    x
+        X component of the vector.
+    y
+        Y component of the vector.
+    """
+
     __slots__ = ("x", "y")
     
-    def __init__(self, x: float, y: float) -> None:
-        self.x = x
-        self.y = y
+    def __init__(self,
+            x: Optional["float | Vector2 | tuple[float, float]"] = None,
+            y: Optional[float | int] = None
+        ) -> None:
+        """
+        `Vector2()` -> `Vector2(0.0, 0.0)`
+
+        `Vector2(float)` -> `Vector2(float, float)`
+
+        `Vector2(x_float, y_float)` -> `Vector2(x_float, y_float)`
+
+        `Vector2(Vector2)` -> `Vector2(Vector2.x, Vector2.y)`
+
+        `Vector2(tuple[float, ...])` -> `Vector2(x_float, y_float)`
+
+        Parameters
+        ----------
+        x
+            X component of the vector.
+        y
+            Y component of the vector.
+        """
+        if x is None:
+            self.x = 0.0
+            self.y = 0.0
+
+        if isinstance(x, float):
+            self.x = x
+            self.y = x if y is None else y
+
+        elif isinstance(x, int):
+            self.x = float(x)
+            self.y = self.x if y is None else float(y)
+
+        elif isinstance(x, Vector2):
+            self.x = x.x
+            self.y = x.y
+        
+        elif isinstance(x, tuple):
+            self.x = x[0]
+            self.y = x[1] if len(x) > 1 else x[0]
+
+        else:
+            raise TypeError("Arguments must be float, Vector2 or a tuple of floats")
 
     def __repr__(self) -> str:
         return f"<nova.Vector2({round(self.x, 3)}, {round(self.y, 3)})>"
@@ -41,6 +110,17 @@ class Vector2:
     def to_tuple(self) -> tuple[float, float]:
         return (self.x, self.y)
     
+    def __getitem__(self, index: int) -> float:
+        return (self.x, self.y)[index]
+
+    def __setitem__(self, index: int, value: float) -> float:
+        if index == 0:
+            self.x = value
+        elif index == 1:
+            self.y == value
+        else:
+            raise ValueError(f"Index '{index}' is out of range of a 2 dimensional vector")
+
     def __add__(self, vector: "Vector2") -> "Vector2":
         return Vector2(self.x + vector.x, self.y + vector.y)
     
@@ -90,6 +170,9 @@ class Vector2:
     
     def lerp(self, vector: "Vector2", t: float) -> "Vector2":
         return Vector2((1.0 - t) * self.x + t * vector.x, (1.0 - t) * self.y + t * vector.y)
+    
+
+Coordinate = Vector2 | tuple[float, float]
 
 
 @dataclass
@@ -347,7 +430,8 @@ class Space:
     
     @broadphase.setter
     def broadphase(self, broadphase_algorithm: BroadPhaseAlgorithm) -> None:
-        lib.nvSpace_set_broadphase(self._space, broadphase_algorithm.value)
+        if lib.nvSpace_set_broadphase(self._space, broadphase_algorithm.value):
+            raise NovaError(get_error_buffer())
 
 
 class ShapeType(Enum):
@@ -623,12 +707,22 @@ class RigidBody:
     def __init__(
             self,
             type: RigidBodyType = RigidBodyType.STATIC,
-            position: Vector2 = Vector2(0.0, 0.0),
+            position: Coordinate = Vector2(0.0, 0.0),
             angle: float = 0.0,
-            linear_velocity: Vector2 = Vector2(0.0, 0.0),
+            linear_velocity: Coordinate = Vector2(0.0, 0.0),
             angular_velocity: float = 0.0,
             material: Material = Material()
         ) -> None:
+        type = _enforce("type", type, RigidBodyType)
+        position = _enforce("position", position, Coordinate)
+        angle = _enforce("angle", angle, float)
+        linear_velocity = _enforce("linear_velocity", linear_velocity, Coordinate)
+        angular_velocity = _enforce("angular_velocity", angular_velocity, float)
+        material = _enforce("material", material, Material)
+
+        position = Vector2(position)
+        linear_velocity = Vector2(linear_velocity)
+
         init = lib.nvRigidBodyInitializer_default
         init.type = type.value
         init.position = position.to_tuple()
@@ -646,7 +740,9 @@ class RigidBody:
             raise NovaError(get_error_buffer())
 
     def __del__(self) -> None:
+        if not hasattr(self, "_rigidbody"): return
         if self._refd: return
+
         lib.nvRigidBody_free(self._rigidbody)
 
         # Do not clear shape references
@@ -675,6 +771,19 @@ class RigidBody:
     def iter_shapes(self) -> Iterator[Shape]:
         for shape in self._shape_ref:
             yield shape
+
+    @property
+    def type(self) -> RigidBodyType:
+        type = lib.nvRigidBody_get_type(self._rigidbody)
+        if type == 0:
+            return RigidBodyType.STATIC
+        else:
+            return RigidBodyType.DYNAMIC
+    
+    @type.setter
+    def type(self, type: RigidBodyType) -> None:
+        if lib.nvRigidBody_set_type(self._rigidbody, type.value):
+            raise NovaError(get_error_buffer())
 
     @property
     def aabb(self) -> AABB:
