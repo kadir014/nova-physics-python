@@ -1,4 +1,4 @@
-from typing import Type, TypeVar, Optional
+from typing import Type, TypeVar, Optional, Callable, Any
 from collections.abc import Iterator
 
 from dataclasses import dataclass
@@ -319,6 +319,9 @@ class SpaceSettings:
     def warmstarting(self, value: bool) -> None:
         self.__settings.warmstarting = value
 
+PolygonVisitorCallback = Callable[[list[Vector2], "Space", "RigidBody", "Shape", Any | None], None]
+CircleVisitorCallback = Callable[[Vector2, float, "Space", "RigidBody", "Shape", Any | None], None]
+
 class Space:
     def __init__(self) -> None:
         self._space = lib.nvSpace_new()
@@ -370,9 +373,6 @@ class Space:
             raise NovaError(get_error_buffer())
 
     def iter_bodies(self) -> Iterator["RigidBody"]:
-
-        # ? Use _body_ref instead of allocation and calling nvSpace_iter_bodies
-
         #body = ffi.new("nvRigidBody **")
         #index = ffi.new("size_t *")
         #while lib.nvSpace_iter_bodies(self._space, body, index):
@@ -395,6 +395,37 @@ class Space:
         self.profiler.warmstart = self._space.profiler.warmstart
         self.profiler.solve_velocities = self._space.profiler.solve_velocities
         self.profiler.integrate_velocities = self._space.profiler.integrate_velocities
+
+    def visit_geometry(self,
+            poly_visitor_callback: PolygonVisitorCallback | None = None,
+            circle_visitor_callback: CircleVisitorCallback | None = None,
+            user_arg: Any | None = None
+            ) -> None:
+        
+        # TODO: Use nvSpace_set_geometry_visitor_callbacks for possibly faster transforms
+
+        for body in self.iter_bodies():
+            for shape in body.iter_shapes():
+                shape.transform(body)
+                if shape.type == ShapeType.POLYGON:
+                    if poly_visitor_callback:
+                        poly_visitor_callback(
+                            shape.transformed_vertices,
+                            self,
+                            body,
+                            shape,
+                            user_arg
+                        )
+                else:
+                    if circle_visitor_callback:
+                        circle_visitor_callback(
+                            shape.transformed_center,
+                            shape.radius,
+                            self,
+                            body,
+                            shape,
+                            user_arg
+                        )
 
     def cast_ray(self, ray_from: Vector2, ray_to: Vector2) -> list[RayCastResult]:
         from_ = ray_from.to_tuple()
@@ -544,8 +575,6 @@ class Circle(Shape):
         
         You need to call `transform` method before accessing this property.
         """
-
-        # TODO am i stupid this doesn't need to be a property
 
         return self.__transformed_center
 
