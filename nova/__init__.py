@@ -1,4 +1,4 @@
-from typing import Type, TypeVar, Optional, Callable, Any
+from typing import Type, TypeVar, Callable, Any
 from collections.abc import Iterator
 
 from dataclasses import dataclass
@@ -60,8 +60,8 @@ class Vector2:
     __slots__ = ("x", "y")
     
     def __init__(self,
-            x: Optional["float | Vector2 | tuple[float, float]"] = None,
-            y: Optional[float | int] = None
+            x: "float | Vector2 | tuple[float, float] | None" = None,
+            y: float | int | None = None
         ) -> None:
         """
         `Vector2()` -> `Vector2(0.0, 0.0)`
@@ -106,9 +106,6 @@ class Vector2:
 
     def __repr__(self) -> str:
         return f"<nova.Vector2({round(self.x, 3)}, {round(self.y, 3)})>"
-
-    def to_tuple(self) -> tuple[float, float]:
-        return (self.x, self.y)
     
     def __getitem__(self, index: int) -> float:
         return (self.x, self.y)[index]
@@ -120,6 +117,13 @@ class Vector2:
             self.y == value
         else:
             raise ValueError(f"Index '{index}' is out of range of a 2 dimensional vector")
+        
+    def __iter__(self) -> Iterator[float]:
+        yield self.x
+        yield self.y
+        
+    def to_tuple(self) -> tuple[float, float]:
+        return (self.x, self.y)
 
     def __add__(self, vector: "Vector2") -> "Vector2":
         return Vector2(self.x + vector.x, self.y + vector.y)
@@ -129,6 +133,9 @@ class Vector2:
     
     def __mul__(self, scalar: float) -> "Vector2":
         return Vector2(self.x * scalar, self.y * scalar)
+    
+    def __truediv__(self, scalar: float) -> "Vector2":
+        return Vector2(self.x / scalar, self.y / scalar)
     
     def __eq__(self, vector: "Vector2") -> bool:
         return self.x == vector.x and self.y == vector.y
@@ -322,10 +329,18 @@ class SpaceSettings:
 PolygonVisitorCallback = Callable[[list[Vector2], "Space", "RigidBody", "Shape", Any | None], None]
 CircleVisitorCallback = Callable[[Vector2, float, "Space", "RigidBody", "Shape", Any | None], None]
 
+@dataclass
+class VisitorAuxiliary:
+    space: "Space"
+    body: "RigidBody"
+    shape: "Shape"
+    user_arg: Any | None = None
+
 class Space:
     def __init__(self) -> None:
         self._space = lib.nvSpace_new()
-        self._body_ref = [] # To keep bodies from GC'd
+        self._body_ref: list[RigidBody] = [] # To keep bodies from GC'd
+        self._cons_ref: list[Type["ConstraintT"]] = []
 
         if self._space == ffi.NULL:
             raise NovaError(get_error_buffer())
@@ -334,16 +349,25 @@ class Space:
 
         self.settings = SpaceSettings(self)
 
+        self._poly_visitor: PolygonVisitorCallback | None = None
+        self._circle_visitor: CircleVisitorCallback | None = None
+
     def __del__(self) -> None:
 
         # TODO: nvSpace_free is going to free all bodies and shapes?
 
         lib.nvSpace_free(self._space)
 
-    def _get_body_by_pointer(self, cbody) -> Optional["RigidBody"]:
+    def _get_body_by_pointer(self, cbody) -> "RigidBody | None":
         for body in self._body_ref:
             if body._rigidbody == cbody:
                 return body
+        return None
+    
+    def _get_constraint_by_pointer(self, ccons) -> Type["ConstraintT"]:
+        for cons in self._cons_ref:
+            if cons._cons == ccons:
+                return cons
         return None
 
     def add_rigidbody(self, body: "RigidBody") -> None:
@@ -362,15 +386,19 @@ class Space:
         self._body_ref.remove(body)
 
     def add_constraint(self, constraint: Type["ConstraintT"]) -> None:
+        constraint._refd = True
         ret = lib.nvSpace_add_constraint(self._space, constraint._cons)
         if ret == 2:
             raise DuplicateError("Can't add same constraint to same space more than once.")
         elif ret != 0:
             raise NovaError(get_error_buffer())
+        self._cons_ref.append(constraint)
 
     def remove_constraint(self, constraint: Type["ConstraintT"]) -> None:
+        constraint._refd = False
         if lib.nvSpace_remove_constraint(self._space, constraint._cons):
             raise NovaError(get_error_buffer())
+        self._cons_ref.remove(constraint)
 
     def iter_bodies(self) -> Iterator["RigidBody"]:
         #body = ffi.new("nvRigidBody **")
@@ -380,6 +408,10 @@ class Space:
 
         for body in self._body_ref:
             yield body
+
+    def iter_constraints(self) -> Iterator[Type["ConstraintT"]]:
+        for cons in self._cons_ref:
+            yield cons
 
     def step(self, dt: float) -> None:
         lib.nvSpace_step(self._space, dt)
@@ -396,46 +428,72 @@ class Space:
         self.profiler.solve_velocities = self._space.profiler.solve_velocities
         self.profiler.integrate_velocities = self._space.profiler.integrate_velocities
 
-    def visit_geometry(self,
-            poly_visitor_callback: PolygonVisitorCallback | None = None,
-            circle_visitor_callback: CircleVisitorCallback | None = None,
-            user_arg: Any | None = None
-            ) -> None:
+    def visitor(self,
+            type: "ShapeType"
+            ) -> Callable:
+
+        def decorator(
+                visitor_callback: PolygonVisitorCallback | CircleVisitorCallback
+                ) -> PolygonVisitorCallback | CircleVisitorCallback:
+            if type == ShapeType.POLYGON:
+                self._poly_visitor = visitor_callback
+            elif type == ShapeType.CIRCLE:
+                self._circle_visitor = visitor_callback
+            else:
+                raise TypeError(f"Visitor type '{type}' is not a valid nova.ShapeType")
+
+            # Original callback is not mutated
+            return visitor_callback
+
+        return decorator
+
+    def visit_geometry(self, user_arg: Any | None = None) -> None:
         
         # TODO: Use nvSpace_set_geometry_visitor_callbacks for possibly faster transforms
 
         for body in self.iter_bodies():
             for shape in body.iter_shapes():
+
                 shape.transform(body)
+
                 if shape.type == ShapeType.POLYGON:
-                    if poly_visitor_callback:
-                        poly_visitor_callback(
+                    if self._poly_visitor is not None:
+                        self._poly_visitor(
                             shape.transformed_vertices,
-                            self,
-                            body,
-                            shape,
-                            user_arg
+                            VisitorAuxiliary(
+                                self,
+                                body,
+                                shape,
+                                user_arg
+                            )
                         )
                 else:
-                    if circle_visitor_callback:
-                        circle_visitor_callback(
+                    if self._circle_visitor is not None:
+                        self._circle_visitor(
                             shape.transformed_center,
                             shape.radius,
-                            self,
-                            body,
-                            shape,
-                            user_arg
+                            VisitorAuxiliary(
+                                self,
+                                body,
+                                shape,
+                                user_arg
+                            )
                         )
 
-    def cast_ray(self, ray_from: Vector2, ray_to: Vector2) -> list[RayCastResult]:
+    def cast_ray(self,
+            ray_from: Vector2,
+            ray_to: Vector2,
+            max_results: int = 512
+            ) -> list[RayCastResult]:
         from_ = ray_from.to_tuple()
         to_ = ray_to.to_tuple()
-        capacity = 512
 
-        results_ = ffi.new(f"nvRayCastResult[{capacity}]")
+        results_ = ffi.new(f"nvRayCastResult[{max_results}]")
         num_hits_ = ffi.new("size_t *")
 
-        lib.nvSpace_cast_ray(self._space, from_, to_, results_, num_hits_, capacity)
+        lib.nvSpace_cast_ray(
+            self._space, from_, to_, results_, num_hits_, max_results
+        )
 
         num_hits = int(num_hits_[0])
         results = []
@@ -763,7 +821,7 @@ class RigidBody:
         self._refd = False
 
         # To keep GC
-        self._shape_ref = []
+        self._shape_ref: list[Shape] = []
 
         if self._rigidbody == ffi.NULL:
             raise NovaError(get_error_buffer())
@@ -779,7 +837,7 @@ class RigidBody:
         # heap corruption -> for shape in self._shape_ref: shape._refd = False
         self._shape_ref.clear()
 
-    def _get_shape_by_pointer(self, cshape) -> Optional[Shape]:
+    def _get_shape_by_pointer(self, cshape) -> Shape | None:
         for shape in self._shape_ref:
             if shape._shape == cshape:
                 return shape
@@ -877,23 +935,35 @@ class RigidBody:
     def inertia(self, inertia: float) -> None:
         lib.nvRigidBody_set_inertia(self._rigidbody, inertia)
 
+    @property
+    def gravity_scale(self) -> float:
+        return lib.nvRigidBody_get_gravity_scale(self._rigidbody)
+
+    @gravity_scale.setter
+    def gravity_scale(self, gravity_scale: float) -> None:
+        lib.nvRigidBody_set_gravity_scale(self._rigidbody, gravity_scale)
+
 
 class Constraint:
-    def __init__(self, a: Optional[RigidBody], b: Optional[RigidBody]) -> None:
+    def __init__(self, a: RigidBody | None, b: RigidBody | None) -> None:
         self.a = a
         self.b = b
         self._cons = None
+        self._refd = False
 
     def __del__(self) -> None:
+        if self._refd: return
         self.a, self.b = None, None
+        lib.nvConstraint_free(self._cons)
 
 ConstraintT = TypeVar("ConstraintT", bound=Constraint)
+
 
 class DistanceConstraint(Constraint):
     def __init__(
             self,
-            a: Optional[RigidBody],
-            b: Optional[RigidBody],
+            a: RigidBody | None,
+            b: RigidBody | None,
             length: float,
             anchor_a: Vector2 = Vector2(0.0, 0.0),
             anchor_b: Vector2 = Vector2(0.0, 0.0),
@@ -914,6 +984,24 @@ class DistanceConstraint(Constraint):
         init.damping = damping
         self._cons = lib.nvDistanceConstraint_new(init)
 
+    @property
+    def anchor_a(self) -> Vector2:
+        anchor = lib.nvDistanceConstraint_get_anchor_a(self._cons)
+        return Vector2(anchor.x, anchor.y)
+    
+    @anchor_a.setter
+    def anchor_a(self, anchor_a: Vector2) -> None:
+        lib.nvDistanceConstraint_set_anchor_a(self._cons, anchor_a.to_tuple())
+
+    @property
+    def anchor_b(self) -> Vector2:
+        anchor = lib.nvDistanceConstraint_get_anchor_b(self._cons)
+        return Vector2(anchor.x, anchor.y)
+    
+    @anchor_b.setter
+    def anchor_b(self, anchor_b: Vector2) -> None:
+        lib.nvDistanceConstraint_set_anchor_b(self._cons, anchor_b.to_tuple())
+
 
 class HingeConstraint(Constraint):
     def __init__(
@@ -926,6 +1014,16 @@ class HingeConstraint(Constraint):
         super().__init__(a, b)
 
         init = lib.nvHingeConstraintInitializer_default
-        init.a = a._rigidbody
-        init.b = b._rigidbody
+        init.a = a._rigidbody if a is not None else ffi.NULL
+        init.b = b._rigidbody if b is not None else ffi.NULL
+        init.anchor = anchor.to_tuple()
         self._cons = lib.nvHingeConstraint_new(init)
+
+    @property
+    def anchor(self) -> Vector2:
+        anchor = lib.nvHingeConstraint_get_anchor(self._cons)
+        return Vector2(anchor.x, anchor.y)
+    
+    @anchor.setter
+    def anchor(self, anchor: Vector2) -> None:
+        lib.nvHingeConstraint_set_anchor(self._cons, anchor.to_tuple())
