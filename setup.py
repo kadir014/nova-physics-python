@@ -24,7 +24,15 @@ NOVA_PATH = BUILD_PATH / "nova-physics"
 def download_nightly() -> None:
     """ Download the latest Nova Physics commit. """
 
-    print("Downloading latest commit...")
+    print(
+        "    \n"
+        "    =========================================\n"
+        "    Downloading latest commit of Nova Physics\n"
+        "    \n"
+        "    https://github.com/kadir014/nova-physics\n"
+        "    =========================================\n"
+        "    \n"
+    )
 
     if os.path.exists(BUILD_PATH / "nova-physics"):
         shutil.rmtree(BUILD_PATH / "nova-physics")
@@ -46,6 +54,7 @@ def download_nightly() -> None:
     print("Downloaded and extracted commit.")
     
 
+# TODO: Downloads multiple times for one install...
 download_nightly()
 
 setup(
