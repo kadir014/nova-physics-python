@@ -3,7 +3,7 @@ from collections.abc import Iterator
 
 from dataclasses import dataclass
 from enum import Enum
-from math import sqrt, cos, sin
+from math import sqrt, cos, sin, radians
 
 import _nova
 
@@ -35,6 +35,10 @@ def _enforce(
 
 def get_error_buffer() -> str:
     error_buf = ffi.string(lib.nv_get_error())
+    return error_buf.decode("utf-8")
+
+def get_version_buffer() -> str:
+    error_buf = ffi.string(lib.nv_get_version())
     return error_buf.decode("utf-8")
 
 
@@ -85,7 +89,7 @@ class Vector2:
             self.x = 0.0
             self.y = 0.0
 
-        if isinstance(x, float):
+        elif isinstance(x, float):
             self.x = x
             self.y = x if y is None else y
 
@@ -143,10 +147,16 @@ class Vector2:
     def __neg__(self) -> "Vector2":
         return Vector2(-self.x, -self.y)
     
+    def copy(self) -> "Vector2":
+        return Vector2(self.x, self.y)
+    
     def rotate(self, angle: float) -> "Vector2":
         c = cos(angle)
         s = sin(angle)
         return Vector2(c * self.x - s * self.y, s * self.x + c * self.y)
+    
+    def rotate_deg(self, angle_degrees: float) -> "Vector2":
+        return self.rotate(radians(angle_degrees))
     
     def perp(self) -> "Vector2":
         return Vector2(-self.y, self.x)
@@ -167,7 +177,9 @@ class Vector2:
         return self.x * vector.y - self.y * vector.x
     
     def dist2(self, vector: "Vector2") -> float:
-        return (vector.x - self.x) * (vector.x - self.x) + (vector.y - self.y) * (vector.y - self.y)
+        dx = (vector.x - self.x)
+        dy = (vector.y - self.y)
+        return dx * dx + dy * dy
     
     def dist(self, vector: "Vector2") -> float:
         return sqrt(self.dist2(vector))
@@ -176,7 +188,11 @@ class Vector2:
         return self / self.len()
     
     def lerp(self, vector: "Vector2", t: float) -> "Vector2":
-        return Vector2((1.0 - t) * self.x + t * vector.x, (1.0 - t) * self.y + t * vector.y)
+        alpha = 1.0 - t
+        return Vector2(
+            alpha * self.x + t * vector.x,
+            alpha * self.y + t * vector.y
+        )
     
 
 Coordinate = Vector2 | tuple[float, float]
@@ -223,8 +239,6 @@ class Profiler:
         Time spent constructing the BVH-tree.
     bvh_traverse
         Time spent traversing the BVH-tree.
-    bvh_free
-        Time spent destroying the BVH-tree.
     narrowphase
         Time spent for narrowphase.
     integrate_accelerations
@@ -237,6 +251,8 @@ class Profiler:
         Time spent solving velocity constraints.
     integrate_velocities
         Time spent integrating velocities.
+    raycasts
+        Time spent for ray casts until last simulation step.
     """
 
     step: float = 0.0
@@ -244,17 +260,32 @@ class Profiler:
     broadphase_finalize: float = 0.0
     bvh_build: float = 0.0
     bvh_traverse: float = 0.0
-    bvh_free: float = 0.0
     narrowphase: float = 0.0
     integrate_accelerations: float = 0.0
     presolve: float = 0.0
     warmstart: float = 0.0
     solve_velocities: float = 0.0
     integrate_velocities: float = 0.0
+    raycasts: float = 0.0
 
 
 @dataclass
 class RayCastResult:
+    """
+    Result of a single ray cast query.
+
+    Attributes
+    ----------
+    position
+        Point in world space where ray intersects shape.
+    normal
+        Normal of the surface ray hit.
+    body
+        The rigid body that was hit
+    shape
+        First (and only) shape of the body which is involved in the collision.
+    """
+
     position: Vector2
     normal: Vector2
     body: "RigidBody"
@@ -331,6 +362,21 @@ CircleVisitorCallback = Callable[[Vector2, float, "Space", "RigidBody", "Shape",
 
 @dataclass
 class VisitorAuxiliary:
+    """
+    Auxiliary information for visitor callback functions.
+    
+    Attributes
+    ----------
+    space
+        Current space
+    body
+        Currently visited rigid body
+    shape
+        Currently visited shape
+    user_arg
+        User argument
+    """
+
     space: "Space"
     body: "RigidBody"
     shape: "Shape"
@@ -345,9 +391,9 @@ class Space:
         if self._space == ffi.NULL:
             raise NovaError(get_error_buffer())
         
-        self.profiler = Profiler()
+        self._profiler = Profiler()
 
-        self.settings = SpaceSettings(self)
+        self._settings = SpaceSettings(self)
 
         self._poly_visitor: PolygonVisitorCallback | None = None
         self._circle_visitor: CircleVisitorCallback | None = None
@@ -416,19 +462,21 @@ class Space:
             yield cons
 
     def step(self, dt: float) -> None:
+        self._profiler.raycasts = self._space.profiler.raycasts
+
         lib.nvSpace_step(self._space, dt)
 
-        self.profiler.step = self._space.profiler.step
-        self.profiler.broadphase = self._space.profiler.broadphase
-        self.profiler.broadphase_finalize = self._space.profiler.broadphase_finalize
-        self.profiler.bvh_build = self._space.profiler.bvh_build
-        self.profiler.bvh_traverse = self._space.profiler.bvh_traverse
-        self.profiler.narrowphase = self._space.profiler.narrowphase
-        self.profiler.integrate_accelerations = self._space.profiler.integrate_accelerations
-        self.profiler.presolve = self._space.profiler.presolve
-        self.profiler.warmstart = self._space.profiler.warmstart
-        self.profiler.solve_velocities = self._space.profiler.solve_velocities
-        self.profiler.integrate_velocities = self._space.profiler.integrate_velocities
+        self._profiler.step = self._space.profiler.step
+        self._profiler.broadphase = self._space.profiler.broadphase
+        self._profiler.broadphase_finalize = self._space.profiler.broadphase_finalize
+        self._profiler.bvh_build = self._space.profiler.bvh_build
+        self._profiler.bvh_traverse = self._space.profiler.bvh_traverse
+        self._profiler.narrowphase = self._space.profiler.narrowphase
+        self._profiler.integrate_accelerations = self._space.profiler.integrate_accelerations
+        self._profiler.presolve = self._space.profiler.presolve
+        self._profiler.warmstart = self._space.profiler.warmstart
+        self._profiler.solve_velocities = self._space.profiler.solve_velocities
+        self._profiler.integrate_velocities = self._space.profiler.integrate_velocities
 
     def visitor(self,
             type: "ShapeType"
@@ -513,6 +561,18 @@ class Space:
             ))
 
         return results
+    
+    def total_memory_used(self) -> int:
+        """ Get the total amount of memory used by this space instance in bytes. """
+        return lib.nvSpace_total_memory_used(self._space)
+    
+    @property
+    def profiler(self) -> Profiler:
+        return self._profiler
+    
+    @property
+    def settings(self) -> SpaceSettings:
+        return self._settings
 
     @property
     def broadphase(self) -> BroadPhaseAlgorithm:
@@ -523,6 +583,15 @@ class Space:
     def broadphase(self, broadphase_algorithm: BroadPhaseAlgorithm) -> None:
         if lib.nvSpace_set_broadphase(self._space, broadphase_algorithm.value):
             raise NovaError(get_error_buffer())
+        
+    @property
+    def gravity(self) -> Vector2:
+        gravity = lib.nvSpace_get_gravity(self._space)
+        return Vector2(gravity.x, gravity.y)
+    
+    @gravity.setter
+    def gravity(self, gravity: Vector2) -> None:
+        lib.nvSpace_set_gravity(self._space, gravity.to_tuple())
 
 
 class ShapeType(Enum):

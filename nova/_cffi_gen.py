@@ -66,6 +66,8 @@ typedef struct {
 } nvProfiler;
 
 char *nv_get_error();
+
+char *nv_get_version();
 """
 
     includes = (
