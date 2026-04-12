@@ -1,5 +1,10 @@
 # Python binding for [Nova Physics Engine](https://github.com/kadir014/nova-physics)
-Python bindings using CFFI for Nova Physics Engine.
+<img src="https://img.shields.io/badge/license-MIT-blue.svg">
+<img src="https://img.shields.io/badge/version-0.0.2-yellow">
+
+Python bindings using CFFI for the Nova Physics Engine.
+
+This binding tries to be as Pythonic as possible while trying to keep the original interface the same. So you should be able to use [C library's documentation](https://nova-physics.readthedocs.io/en/latest/).
 
 
 
@@ -12,17 +17,23 @@ Python bindings using CFFI for Nova Physics Engine.
 
 # Installation
 Clone the repo and `cd` into it.
-```sh
+```shell
 $ git clone https://github.com/kadir014/nova-physics-python.git
+$ cd nova-physics-python
 ```
 
-Build the wheel, this will also download the latest commit from C repository.
-```sh
+Install the package locally. This will also download the latest commit from C library's repository.
+```shell
+$ pip install .
+```
+
+Or if you want to build wheels, follow this.
+```shell
 $ python -m build
 ```
 
-Install the wheel generated under the `dist` directory.
-```sh
+Then install the wheel generated under the `dist` directory.
+```shell
 $ pip install nova-version-yourplatform.whl
 ```
 
