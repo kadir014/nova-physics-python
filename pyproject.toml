@@ -1,5 +1,5 @@
 [project]
-name = "nova"
+name = "novaphysics"
 description = "Nova Physics Engine Python Binding"
 version = "0.2.0"
 readme = "README.md"
