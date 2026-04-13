@@ -20,6 +20,7 @@ jobs:
 
       - uses: actions/upload-artifact@v6
         with:
+          name: sdist
           path: dist/*.tar.gz
 
   upload_pypi:
@@ -31,10 +32,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v6
         with:
-          # unpacks default artifact into dist/
-          # if `name: artifact` is omitted, the action will create extra parent dir
-          name: artifact
+          pattern: "{cibw-wheels-*,sdist}"
           path: dist
+          merge-multiple: true
 
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
