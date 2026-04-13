@@ -1,7 +1,7 @@
 [project]
 name = "novaphysics"
 description = "Nova Physics Engine Python Binding"
-version = "0.2.1"
+version = "0.2.2"
 readme = "README.md"
 authors = [
     {name="Kadir Aksoy"},
