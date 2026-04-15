@@ -1,11 +1,9 @@
-import sys
 import os
 import platform
 import shutil
 import io
 import tarfile
 import urllib.request
-from time import time
 from pathlib import Path
 from setuptools import setup
 
@@ -26,6 +24,7 @@ def download_nightly() -> None:
 
     print(
         "    \n"
+        "    setup.py:\n"
         "    =========================================\n"
         "    Downloading latest commit of Nova Physics\n"
         "    \n"
@@ -51,7 +50,14 @@ def download_nightly() -> None:
 
     os.rename(BUILD_PATH / "nova-physics-main", BUILD_PATH / "nova-physics")
 
-    print("Downloaded and extracted commit.")
+    print(
+        "    \n"
+        "    setup.py:\n"
+        "    =========================================\n"
+        "    Downloaded and extracted successfully.\n"
+        "    =========================================\n"
+        "    \n"
+    )
     
 
 # TODO: Downloads multiple times for one install...

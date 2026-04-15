@@ -1,22 +1,27 @@
 [project]
 name = "novaphysics"
 description = "Nova Physics Engine Python Binding"
-version = "0.2.2"
+version = "0.2.3"
 readme = "README.md"
 authors = [
     {name="Kadir Aksoy"},
 ]
 classifiers = [
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Topic :: Games/Entertainment",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
     "cffi >= 1.17.0",
 ]
 requires-python = ">=3.10"
+
+license = "MIT"
+license-files = ["LICENSE"]
 
 [project.urls]
 homepage = "https://github.com/kadir014/nova-physics-python"

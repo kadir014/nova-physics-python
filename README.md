@@ -1,6 +1,8 @@
 # Python binding for [Nova Physics Engine](https://github.com/kadir014/nova-physics)
-<img src="https://img.shields.io/badge/license-MIT-blue.svg">
-<img src="https://img.shields.io/badge/version-0.2.2-yellow">
+<p>
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg">
+    <img src="https://img.shields.io/badge/version-0.2.3-yellow">
+</p>
 
 Python bindings using CFFI for the Nova Physics Engine.
 
@@ -16,7 +18,12 @@ This binding tries to be as Pythonic as possible while trying to keep the origin
 
 
 # Installation
-Clone the repo and `cd` into it.
+You can simply install from PyPI.
+```shell
+$ pip install novaphysics
+```
+
+Or if you want to manually install, clone the repo and `cd` into it.
 ```shell
 $ git clone https://github.com/kadir014/nova-physics-python.git
 $ cd nova-physics-python
