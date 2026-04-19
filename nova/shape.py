@@ -11,6 +11,7 @@
 from typing import TYPE_CHECKING
 
 from nova.common import lib, ffi, get_error_buffer
+from nova.typing import Coordinate
 from nova.models import ShapeType
 from nova.error import NovaError
 from nova.vector import Vector2
@@ -35,9 +36,14 @@ class Shape:
     def type(self) -> ShapeType:
         return ShapeType(self._shape.type)
     
-    def transform(self, body: "RigidBody") -> None:
+    def transform(self,
+            body: "RigidBody",
+            offset: tuple[Coordinate, float] | None = None
+        ) -> None:
         """
         Transform the shape data to world space from local (body) space.
+
+        The optional `offset` argument is useful for rendering interpolation.
 
         Shape subclasses must implement this function.
 
@@ -45,6 +51,8 @@ class Shape:
         ----------
         body
             Rigid body to use as the origin for transform
+        offset
+            Optional relative transform (pair of position and rotation).
         """
         
         raise NotImplementedError()
@@ -89,17 +97,35 @@ class Polygon(Shape):
 
         return verts
     
-    def transform(self, body: "RigidBody") -> None:
+    def transform(self,
+            body: "RigidBody",
+            offset: tuple[Coordinate, float] | None = None
+        ) -> None:
         """
         Transform the shape data to world space from local (body) space.
+
+        The optional `offset` argument is useful for rendering interpolation.
 
         Parameters
         ----------
         body
             Rigid body to use as the origin for transform
+        offset
+            Optional relative transform (pair of position and rotation).
         """
 
-        lib.nvPolygon_transform(self._shape, (body._rigidbody.origin, body.angle))
+        if offset is None:
+            offset = (Vector2(), 0.0)
+
+        offset = (Vector2(offset[0]), offset[1])
+
+        origin = body._rigidbody.origin
+        new_xform = (
+            (origin.x + offset[0].x, origin.y + offset[0].y),
+            body.angle + offset[1]
+        )
+
+        lib.nvPolygon_transform(self._shape, new_xform)
 
 
 class Circle(Shape):
@@ -130,20 +156,35 @@ class Circle(Shape):
 
         return self.__transformed_center
 
-    def transform(self, body: "RigidBody") -> None:
+    def transform(self,
+            body: "RigidBody",
+            offset: tuple[Coordinate, float] | None = None
+        ) -> None:
         """
         Transform the shape data to world space from local (body) space.
+
+        The optional `offset` argument is useful for rendering interpolation.
 
         Parameters
         ----------
         body
             Rigid body to use as the origin for transform
+        offset
+            Optional relative transform (pair of position and rotation).
         """
 
+        if offset is None:
+            offset = (Vector2(), 0.0)
+
+        offset = (Vector2(offset[0]), offset[1])
+
         center = Vector2(self._shape.circle.center.x, self._shape.circle.center.y)
-        center = center.rotate(body.angle)
+        center = center.rotate(body.angle + offset[1])
+
         center.x += body._rigidbody.origin.x
         center.y += body._rigidbody.origin.y
+
+        center += offset[0]
 
         self.__transformed_center = center
 
