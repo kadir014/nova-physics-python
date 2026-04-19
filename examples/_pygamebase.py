@@ -30,9 +30,13 @@ class PygameExample:
         self.is_running = False
 
         self.target_fps = target_fps
+        self.dt = 0.0
+
         self.mouse = pygame.Vector2()
         self.pmouse = nova.Vector2()
         self.events: list[pygame.Event] = []
+
+        self.ui_text: list[str] = []
 
         self.zoom = 30.0
         self.camera = pygame.Vector2()
@@ -66,7 +70,7 @@ class PygameExample:
         self.is_running = True
 
         while self.is_running:
-            self.clock.tick(self.target_fps)
+            self.dt = self.clock.tick(self.target_fps) * 0.001
 
             self.events = pygame.event.get()
 
@@ -84,7 +88,7 @@ class PygameExample:
             self.update()
 
             self.display.fill((255, 255, 255))
-            
+
             self.render()
 
             ui_text = (
@@ -101,6 +105,12 @@ class PygameExample:
                 f"Zoom: {self.zoom}x\n"
                 f"Camera: {round(self.camera.x, 2)}, {round(self.camera.y, 2)}"
             )
+
+            if len(self.ui_text) > 0:
+                sub_ui_text = self.ui_text.copy()
+                self.ui_text.clear()
+                ui_text += "\n\n" + "\n".join(sub_ui_text)
+
             text_surf = self.font.render(ui_text, True, (255, 255, 255))
 
             new_text_bg = pygame.Surface(text_surf.get_rect().inflate(20, 20).size)
