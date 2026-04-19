@@ -90,6 +90,13 @@ class RigidBody:
         for shape in self._shape_ref:
             yield shape
 
+    def apply_force(self, force: Coordinate) -> None:
+        force = Vector2(force)
+        lib.nvRigidBody_apply_force(self._rigidbody, force.to_tuple())
+
+    def apply_torque(self, torque: float) -> None:
+        lib.nvRigidBody_apply_torque(self._rigidbody, torque)
+
     @property
     def type(self) -> RigidBodyType:
         type = lib.nvRigidBody_get_type(self._rigidbody)
