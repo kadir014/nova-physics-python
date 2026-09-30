@@ -217,11 +217,12 @@ class ShapeFactory:
     
     @staticmethod
     def polygon(
-            vertices: list[Vector2],
-            offset: Vector2 = Vector2(0.0, 0.0)
+            points: list[Vector2],
+            offset: Vector2 = Vector2(0.0, 0.0),
+            center: bool = True
         ) -> Polygon:
         """
-        Create a convex polygon shape from given vertices.
+        Create a convex hull shape from given point cloud.
 
         Parameters
         ----------
@@ -229,14 +230,16 @@ class ShapeFactory:
             List of vertices in local (body) space.
         offset
             Offset of the polygon centroid from body origin.
+        center
+            Transform generated hull to its centroid.
         """
 
-        n = len(vertices)
+        n = len(points)
         vertices_buf = ffi.new(f"nvVector2[{n}]")
         for i in range(n):
-            vertices_buf[i] = (vertices[i].x, vertices[i].y)
+            vertices_buf[i] = (points[i].x, points[i].y)
 
-        shape = lib.nvPolygonShape_new(vertices_buf, n, offset.to_tuple())
+        shape = lib.nvConvexHullShape_new(vertices_buf, n, offset.to_tuple(), center)
         if shape == ffi.NULL:
             raise NovaError(get_error_buffer())
 
