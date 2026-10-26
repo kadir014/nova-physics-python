@@ -1,163 +1,188 @@
-import os
+"""
+
+    This file is a part of the Nova Physics Engine
+    Python Binding and distributed under the MIT license.
+
+    Repository: https://github.com/kadir014/nova-physics-python
+    Issues:     https://github.com/kadir014/nova-physics-python/issues
+
+"""
+
 import platform
+import re
+from pathlib import Path
 
 from cffi import FFI
 
 
 RELEASE_BUILD = True
 
+BASE_PATH = Path(__file__).resolve().parents[1]
+NOVA_PATH = BASE_PATH / "build" / "nova-physics"
+INCLUDE_PATH = NOVA_PATH / "include"
+HEADER_PATH = INCLUDE_PATH / "novaphysics"
+
 MSVC_COMPILER_ARGS = (
     "/arch:AVX2",
     "/D_CRT_SECURE_NO_WARNINGS",
-    "/DNV_ENABLE_PROFILER"
+    "/DNV_ENABLE_PROFILER",
 )
-
 GCC_COMPILER_ARGS = (
-    # Detect if building with python-wasm-sdk, emcc doesn't accept -march
-    #"-march=native",
+    # TODO: Detect if building with python-wasm-sdk, emcc doesn't accept -march
     "-D_POSIX_C_SOURCE=200809L",
-    "-DNV_ENABLE_PROFILER"
+    "-DNV_ENABLE_PROFILER",
 )
 
+IGNORED_HEADERS = {"internal.h", "internal_alloc.h"}
 
-def generate_cdef() -> None:
-    """ Generate cdef header. """
-    
-    cdef_source = """
-typedef float nv_float;
-typedef int8_t nv_int8;
-typedef int16_t nv_int16;
-typedef int32_t nv_int32;
-typedef int64_t nv_int64;
-typedef uint8_t nv_uint8;
-typedef uint16_t nv_uint16;
-typedef uint32_t nv_uint32;
-typedef uint64_t nv_uint64;
-typedef int nv_bool;
 
-#define NV_POLYGON_MAX_VERTICES 16
-#define NV_SPLINE_CONSTRAINT_MAX_CONTROL_POINTS 64
-#define NV_SPLINE_CONSTRAINT_SAMPLES 500
-
-typedef struct {
-    nv_float x;
-    nv_float y;
-} nvVector2;
-
-typedef struct {
-    nvVector2 position;
-    nv_float angle;
-} nvTransform;
-
-typedef struct {
-    double step;
-    double broadphase;
-    double broadphase_finalize;
-    double bvh_build;
-    double bvh_traverse;
-    double narrowphase;
-    double integrate_accelerations;
-    double presolve;
-    double warmstart;
-    double solve_velocities;
-    double solve_positions;
-    double integrate_velocities;
-    double raycasts;
-} nvProfiler;
-
-char *nv_get_error();
-
-char *nv_get_version();
-"""
-
-    includes = (
-        "core/array.h",
-        "core/hashmap.h",
-        "core/pool.h",
-        "aabb.h",
-        "material.h",
-        "shape.h",
-        "body.h",
-        "contact.h",
-        "collision.h",
-        "constraints/constraint.h",
-        "constraints/contact_constraint.h",
-        "constraints/distance_constraint.h",
-        "constraints/hinge_constraint.h",
-        "constraints/spline_constraint.h",
-        "broadphase.h",
-        "space_settings.h",
-        "bvh.h",
-        "space.h",
+def read_header(path: Path) -> str:
+    source = path.read_text(encoding="utf-8")
+    # Preserve string literals while removing comments (including commented code).
+    return re.sub(
+        r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|/\*.*?\*/|//[^\n]*',
+        lambda match: " " if match[0].startswith(("/*", "//")) else match[0],
+        source,
+        flags=re.S,
     )
 
-    for include in includes:
-        bracket = 0
-        staticinline = False
-        with open(f"build/nova-physics/include/novaphysics/{include}", "r") as f:
-            for line in f.readlines()[:-1]:
 
-                if line.startswith("static inline"):
-                    if "{" in line: bracket += 1
-                    staticinline = True
-                    continue
+def ordered_headers() -> list[Path]:
+    """ Visit includes first so typedefs precede the declarations using them. """
 
-                if staticinline and "{" in line:
-                    bracket += 1
+    visited = set()
+    ordered = []
 
-                if staticinline and "}" in line:
-                    bracket -= 1
+    def visit(path):
+        if path in visited:
+            return
+        visited.add(path)
+        for include in re.findall(r'^\s*#include\s+"([^"]+)"', read_header(path), re.M):
+            dependency = (INCLUDE_PATH / include).resolve()
+            if not dependency.is_file():
+                dependency = (path.parent / include).resolve()
+            if dependency.is_file() and dependency.is_relative_to(HEADER_PATH.resolve()):
+                visit(dependency)
+        if path.name not in IGNORED_HEADERS:
+            ordered.append(path)
 
-                    if bracket == 0:
-                        staticinline = False
-                        continue
-
-                if staticinline:
-                    continue
-
-                if not (
-                    line.startswith("#ifndef NOVAPHYSICS") or
-                    line.startswith("#define NOVAPHYSICS") or
-                    line.startswith("#include") or
-                    line.startswith("#define")
-                ):
-                    cdef_source += line
-
-    with open("novaphysics_cdef.h", "w") as f:
-        f.write(cdef_source)
+    for path in sorted(HEADER_PATH.rglob("*.h")):
+        visit(path.resolve())
+    if not ordered:
+        raise FileNotFoundError(f"No Nova headers found in {HEADER_PATH}")
+    return ordered
 
 
-generate_cdef()
+def header_cdef(path: Path) -> str:
+    """ Generate cdef for one header. """
 
-ffibuilder = FFI()
+    source = read_header(path)
+    if path.name == "types.h":
+        # Ignore the alternate precision branch and nv_sin/nv_cos/etc aliases.
+        # These math macros are not used by the Python binding. CFFI's float...
+        # typedef lets the compiler determine nv_float's actual precision.
+        source = re.sub(r"#ifdef NV_USE_DOUBLE_PRECISION\b.*?#else\b", "", source, flags=re.S)
+        source = re.sub(r"typedef\s+(float|double)\s+(nv_float)\s*;", r"typedef \1... \2;", source)
 
-with open("novaphysics_cdef.h", "r") as f:
-    ffibuilder.cdef(f.read())
+    if path.name == "profiler.h":
+        # nvPrecisionTimer and its functions are ignored. Windows & posix types
+        # complicate CFFI, and the Python binding only uses nvProfiler.
+        source = source.split("typedef struct _nvPrecisionTimer", 1)[0]
 
-src_path = "build/nova-physics/src"
-sources = []
-for root, _, files in os.walk(src_path):
-    for file in files:
-        sources.append(os.path.join(root, file))
+    # Only simple integer macros are exposed. Function-like macros, strings,
+    # float expressions, platform flags and include guards are intentionally
+    # ignored.
+    # BUT DONT FORGET their definitions remain available to the compiled C source!!
+    source = re.sub(r"\\\r?\n", "", source)
+    constants = re.findall(
+        r"^\s*#define\s+([A-Za-z_]\w*)\s+(0[xX][0-9a-fA-F]+|\d+)[uUlL]*\s*$",
+        source, re.M,
+    )
+    source = re.sub(r"^\s*#[^\n]*", "", source, flags=re.M)
+    # Initializers do not belong to cdef.
+    source = re.sub(r"(\bstatic\s+const\b[^=;]+)\s*=.*?;", r"\1;", source, flags=re.S)
 
-c_args = []
+    # Nova's inline definitions always start with 'static inline'
+    # unless I forget this and do a change in the future lol
+    declarations = []
+    signature = []
+    in_inline = False
+    depth = 0
+    for line in source.splitlines():
 
-if platform.system() == "Windows":
-    c_args += MSVC_COMPILER_ARGS
-else:
-    c_args += GCC_COMPILER_ARGS
+        if not in_inline and re.match(r"\s*static\s+inline\b", line):
+            in_inline = True
+            signature = []
+            line = re.sub(r"\bstatic\s+inline\s+", "", line, count=1)
 
-ffibuilder.set_source(
-    "_nova",
-    """
-    #include \"novaphysics/internal.h\"
-    #include \"novaphysics/novaphysics.h\"
-    """,
-    sources=sources,
-    include_dirs=["build/nova-physics/include/"],
-    extra_compile_args=c_args
+        if not in_inline:
+            declarations.append(line)
+            continue
+
+        masked = re.sub(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', '""', line)
+        if depth == 0:
+            if "{" not in masked:
+                signature.append(line)
+                if ";" in masked:  # inline prototype, without a body
+                    declarations.extend(signature)
+                    in_inline = False
+                continue
+            signature.append(line[:masked.index("{")].rstrip() + ";")
+            declarations.extend(signature)
+
+        depth += masked.count("{") - masked.count("}")
+        if depth == 0:
+            in_inline = False
+
+    if in_inline:
+        raise ValueError(f"Unfinished static inline function in {path}")
+
+    return "\n".join(f"#define {name} {value}" for name, value in constants) + "\n" + "\n".join(declarations)
+
+
+def generate_cdef(headers: list[Path] | None = None) -> str:
+    """ Generate cdef header. """
+    headers = ordered_headers() if headers is None else headers
+    return "\n\n".join(header_cdef(path) for path in headers)
+
+
+headers = ordered_headers()
+cdef_source = generate_cdef(headers)
+# Includes put the original inline implementations in the generated C module.
+# No need to copy the bodies header guards already prevent duplicate definitions
+ffi_sources = "\n".join(
+    f'#include "{path.relative_to(INCLUDE_PATH).as_posix()}"' for path in headers
 )
 
 
+print(
+    "    \n"
+    "    nova/_cffi_gen.py:\n"
+    "    =========================================\n"
+    "    Parsing & building the cdef header.\n"
+    "    =========================================\n"
+    "    \n"
+)
+ffibuilder = FFI()
+ffibuilder.cdef(cdef_source)
+ffibuilder.set_source(
+    "_nova",
+    ffi_sources,
+    sources=[str(path) for path in sorted((NOVA_PATH / "src").rglob("*.c"))],
+    include_dirs=[str(INCLUDE_PATH)],
+    extra_compile_args=list(MSVC_COMPILER_ARGS if platform.system() == "Windows" else GCC_COMPILER_ARGS),
+    libraries=[] if platform.system() == "Windows" else ["m"],
+)
+
 if __name__ == "__main__":
+    print(
+        "    \n"
+        "    nova/_cffi_gen.py:\n"
+        "    =========================================\n"
+        "    Building the CFFI module.\n"
+        "    =========================================\n"
+        "    \n"
+    )
+
+    (BASE_PATH / "novaphysics_cdef.h").write_text(cdef_source, encoding="utf-8")
     ffibuilder.compile(verbose=False, debug=not RELEASE_BUILD)
