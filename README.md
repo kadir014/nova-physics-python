@@ -1,7 +1,7 @@
 # Python binding for [Nova Physics Engine](https://github.com/kadir014/nova-physics)
 <p>
     <img src="https://img.shields.io/badge/license-MIT-blue.svg">
-    <img src="https://img.shields.io/badge/version-0.2.3-yellow">
+    <img src="https://img.shields.io/badge/version-0.3.0-yellow">
 </p>
 
 Python bindings using CFFI for the Nova Physics Engine.
