@@ -37,6 +37,7 @@ class PygameExample:
         self.events: list[pygame.Event] = []
 
         self.ui_text: list[str] = []
+        self.ui_enabled = True
 
         self.zoom = 30.0
         self.camera = pygame.Vector2()
@@ -85,41 +86,44 @@ class PygameExample:
                     if event.key == pygame.K_ESCAPE:
                         self.stop()
 
-            self.update()
-
+            # Clear before update call so callbacks can render
             self.display.fill((255, 255, 255))
+
+            self.update()
 
             self.render()
 
-            ui_text = (
-                f"Pygame-CE: {pygame.ver}\n"
-                f"Nova (py): {nova.__version__}\n"
-                f"Nova:      {nova.__nova_version__}\n"
-                "\n"
-                f"FPS: {round(self.clock.get_fps(), 1)}\n"
-                f"Physics: {round(self.space.profiler.step * 1000, 3)}ms\n"
-                f"Raycasts: {round(self.space.profiler.raycasts * 1000, 3)}ms\n"
-                f"Bodies: {self.space.num_bodies}\n"
-                f"Constraints: {self.space.num_constraints}\n"
-                "\n"
-                f"Zoom: {self.zoom}x\n"
-                f"Camera: {round(self.camera.x, 2)}, {round(self.camera.y, 2)}"
-            )
+            if self.ui_enabled:
+                ui_text = (
+                    f"Pygame-CE: {pygame.ver}\n"
+                    f"Nova (py): {nova.__version__}\n"
+                    f"Nova:      {nova.__nova_version__}\n"
+                    "\n"
+                    f"FPS:         {round(self.clock.get_fps(), 1)}\n"
+                    f"Physics:     {round(self.space.profiler.step * 1000, 3)}ms\n"
+                    f"Casts:       {round(self.space.profiler.casts * 1000, 3)}ms\n"
+                    f"Queries:     {round(self.space.profiler.queries * 1000, 3)}ms\n"
+                    f"Bodies:      {self.space.num_bodies}\n"
+                    f"Constraints: {self.space.num_constraints}\n"
+                    "\n"
+                    f"Zoom: {self.zoom}x\n"
+                    f"Camera: {round(self.camera.x, 2)}, {round(self.camera.y, 2)}"
+                )
 
-            if len(self.ui_text) > 0:
-                sub_ui_text = self.ui_text.copy()
-                self.ui_text.clear()
-                ui_text += "\n\n" + "\n".join(sub_ui_text)
+                if len(self.ui_text) > 0:
+                    sub_ui_text = self.ui_text.copy()
+                    self.ui_text.clear()
+                    ui_text += "\n\n" + "\n".join(sub_ui_text)
 
-            text_surf = self.font.render(ui_text, True, (255, 255, 255))
+                text_surf = self.font.render(ui_text, True, (255, 255, 255))
 
-            new_text_bg = pygame.Surface(text_surf.get_rect().inflate(20, 20).size)
-            if new_text_bg.get_rect() > self.text_bg.get_rect():
-                self.text_bg = new_text_bg
-                self.text_bg.set_alpha(160)
+                new_text_bg = pygame.Surface(text_surf.get_rect().inflate(20, 20).size)
+                if new_text_bg.get_rect() > self.text_bg.get_rect():
+                    self.text_bg = new_text_bg
+                    self.text_bg.set_alpha(160)
 
-            self.display.blit(self.text_bg, (0, 0))
-            self.display.blit(text_surf, (10, 10))
+                self.display.blit(self.text_bg, (0, 0))
+                self.display.blit(text_surf, (10, 10))
 
             pygame.display.flip()
 

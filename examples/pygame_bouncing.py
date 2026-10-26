@@ -21,8 +21,8 @@ class BouncingExample(PygameExample):
         ground.add_shape(nova.ShapeFactory.box(50.0, 1.0))
         self.space.add_rigidbody(ground)
 
-        radius = 0.5
-        num_balls = 35
+        radius = 0.25
+        num_balls = 75
 
         for i in range(num_balls):
             restitution = i / (num_balls - 1)
