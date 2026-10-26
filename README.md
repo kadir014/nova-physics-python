@@ -29,12 +29,17 @@ $ git clone https://github.com/kadir014/nova-physics-python.git
 $ cd nova-physics-python
 ```
 
-Install the package locally. This will also download the latest commit from C library's repository.
+Install the package locally. This will also download the latest stable release from C library's repository.
 ```shell
 $ pip install .
 ```
 
-Or if you want to build wheels, follow this.
+However, if you want the latest commit of the engine, instead of the last stable release, you should set the build type environment variable to `nightly` before building.
+```shell
+$ NOVA_BUILD=nightly pip install .
+```
+
+Or if you want to build wheels, invoke `build`.
 ```shell
 $ python -m build
 ```
