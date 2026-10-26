@@ -29,9 +29,12 @@ from nova.models import (
     RigidBodyType,
     AABB,
     VisitorAuxiliary,
+    ContactEventType,
+    ContactEvent,
     Material
 )
 from nova.vector import Vector2
+from nova import math
 
 
 __all__ = (
@@ -54,6 +57,8 @@ __all__ = (
     "RigidBodyType",
     "AABB",
     "VisitorAuxiliary",
+    "ContactEventType",
+    "ContactEvent",
     "Material",
     "Vector2"
 )

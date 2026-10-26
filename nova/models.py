@@ -10,9 +10,10 @@
 
 from typing import Any, TYPE_CHECKING
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
 
 from nova.typing import Coordinate
+from nova.common import lib
 from nova.vector import Vector2
 
 if TYPE_CHECKING:
@@ -67,7 +68,7 @@ class AABB:
     def collide_point(self, point: Coordinate) -> bool:
         """ Check if point is inside AABB. """
 
-        point = Vector2(*point)
+        point = Vector2(point)
         return (self.min_x <= point.x and point.x <= self.max_x and
                 self.min_y <= point.y and point.y <= self.max_y)
 
@@ -101,8 +102,10 @@ class Profiler:
         Time spent solving velocity constraints.
     integrate_velocities
         Time spent integrating velocities.
-    raycasts
-        Time spent for ray casts until last simulation step.
+    casts
+        Time spent for casts until last simulation step.
+    queries
+        Time spent for queries until last simulation step.
     """
 
     step: float = 0.0
@@ -116,7 +119,8 @@ class Profiler:
     warmstart: float = 0.0
     solve_velocities: float = 0.0
     integrate_velocities: float = 0.0
-    raycasts: float = 0.0
+    casts: float = 0.0
+    queries: float = 0.0
 
 
 @dataclass
@@ -165,6 +169,53 @@ class VisitorAuxiliary:
     user_arg: Any | None = None
 
 
+class ContactEventType:
+    ADDED = auto()
+    PERSISTED = auto()
+    REMOVED = auto()
+
+
+@dataclass
+class ContactEvent:
+    """
+    Auxiliary information for one contact event callback.
+
+    Attributes
+    ----------
+    body_a
+        Body A.
+    body_b
+        Body B.
+    shape_a
+        Colliding shape of body A.
+    shape_b
+        Colliding shape of body B.
+    normal
+        Collision normal.
+    penetration
+        Contact point penetration depth.
+    position
+        Contact point position in world space.
+    normal_impulse
+        Impulse applied for solving penetration.
+    friction_impulse
+        Impulse applied for solving surface friction.
+    id
+        Contact feature ID. 
+    """
+
+    body_a: RigidBody
+    body_b: RigidBody
+    shape_a: Shape
+    shape_b: Shape
+    normal: Vector2
+    penetration: float
+    position: Vector2
+    normal_impulse: Vector2
+    friction_impulse: Vector2
+    id: int
+
+
 @dataclass
 class Material:
     density: float = 1.0
@@ -173,3 +224,19 @@ class Material:
 
     def to_tuple(self) -> tuple[float, float, float]:
         return (self.density, self.restitution, self.friction)
+
+
+@dataclass
+class CollisionFilter:
+    enabled: bool = True
+    group: int = 0
+    category: int = 0b11111111111111111111111111111111
+    mask: int = 0b11111111111111111111111111111111
+
+    def as_c_type(self):
+        c_filter = lib.nvCollisionFilter_default
+        c_filter.enabled = self.enabled
+        c_filter.group = self.group
+        c_filter.category = self.category
+        c_filter.mask = self.mask
+        return c_filter

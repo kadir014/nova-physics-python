@@ -8,14 +8,15 @@
 
 """
 
-from typing import Callable, TypeVar, Type, TYPE_CHECKING
+from typing import Callable, TypeVar, Type, Any, TYPE_CHECKING
 from collections.abc import Iterable
 
 from nova.vector import Vector2
 from nova.constraint import Constraint
 
 if TYPE_CHECKING:
-    from nova.models import VisitorAuxiliary
+    from nova.models import VisitorAuxiliary, ContactEvent
+    from nova.space import Space
 
 
 EnforcedT = TypeVar("T")
@@ -49,6 +50,8 @@ def enforce(
 Coordinate = Vector2 | tuple[float, float] | Iterable[float]
 
 ConstraintT = TypeVar("ConstraintT", bound=Constraint)
+
+ContactEventCallback = Callable[["Space", "ContactEvent", Any], None]
 
 PolygonVisitorCallback = Callable[[list[Vector2], "VisitorAuxiliary"], None]
 CircleVisitorCallback = Callable[[Vector2, float, "VisitorAuxiliary"], None]

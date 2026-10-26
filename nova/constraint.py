@@ -10,7 +10,8 @@
 
 from typing import TYPE_CHECKING
 
-from nova.common import lib, ffi
+from nova.common import lib, ffi, get_error_buffer
+from nova.error import NovaError
 from nova.vector import Vector2
 
 if TYPE_CHECKING:
@@ -69,9 +70,14 @@ class DistanceConstraint(Constraint):
         init.spring = spring
         init.hertz = hertz
         init.damping = damping
+
         ccons = lib.nvDistanceConstraint_new(init)
 
         super().__init__(ccons)
+
+        # Error after parent __init__ so it can initialize deconstructor.
+        if ccons == ffi.NULL:
+            raise NovaError(get_error_buffer())
 
     @property
     def length(self) -> float:
@@ -149,6 +155,9 @@ class HingeConstraint(Constraint):
         ccons = lib.nvHingeConstraint_new(init)
 
         super().__init__(ccons)
+
+        if ccons == ffi.NULL:
+            raise NovaError(get_error_buffer())
 
     @property
     def anchor(self) -> Vector2:

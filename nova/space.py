@@ -13,6 +13,8 @@ from collections.abc import Iterator
 
 from nova.common import lib, ffi, get_error_buffer
 from nova.typing import (
+    Coordinate,
+    ContactEventCallback,
     PolygonVisitorCallback,
     CircleVisitorCallback,
     ConstraintT
@@ -23,7 +25,10 @@ from nova.models import (
     BroadPhaseAlgorithm,
     RayCastResult,
     VisitorAuxiliary,
-    ShapeType
+    ShapeType,
+    ContactEventType,
+    ContactEvent,
+    CollisionFilter
 )
 from nova.vector import Vector2
 
@@ -107,9 +112,30 @@ class Space:
         self._poly_visitor: PolygonVisitorCallback | None = None
         self._circle_visitor: CircleVisitorCallback | None = None
 
+        listener_ret = lib.nvSpace_set_contact_listener(
+            self._space,
+            (ffi.NULL, ffi.NULL, ffi.NULL),
+            ffi.NULL
+        )
+        if listener_ret != 0:
+            raise NovaError(get_error_buffer())
+
+        # These need to stay alive with Space
+        self._on_added_callback = None
+        self._on_persisted_callback = None
+        self._on_removed_callback = None
+        self._listener_arg_handle = None
+        self._listener_arg = None
+
     def __del__(self) -> None:
 
         # TODO: nvSpace_free is going to free all bodies and shapes?
+
+        self._on_added_callback = None
+        self._on_persisted_callback = None
+        self._on_removed_callback = None
+        self._listener_arg_handle = None
+        self._listener_arg = None
 
         lib.nvSpace_free(self._space)
 
@@ -135,9 +161,21 @@ class Space:
         self._body_ref.append(body)
 
     def remove_rigidbody(self, body: "RigidBody") -> None:
+        # Remove constraints before altering body in any way
+        to_be_removed = []
+        for c in self._cons_ref:
+            if c.body_a is body or c.body_b is body:
+                to_be_removed.append(c)
+
+        for c in to_be_removed:
+            self.remove_constraint(c)
+
         body._refd = False
-        if lib.nvSpace_remove_rigidbody(self._space, body._rigidbody):
+
+        ret = lib.nvSpace_remove_rigidbody(self._space, body._rigidbody)
+        if ret:
             raise NovaError(get_error_buffer())
+
         self._body_ref.remove(body)
 
     def add_constraint(self, constraint: Type["ConstraintT"]) -> None:
@@ -171,7 +209,8 @@ class Space:
             yield cons
 
     def step(self, dt: float) -> None:
-        self._profiler.raycasts = self._space.profiler.raycasts
+        self._profiler.casts = self._space.profiler.casts
+        self._profiler.queries = self._space.profiler.queries
 
         lib.nvSpace_step(self._space, dt)
 
@@ -240,25 +279,25 @@ class Space:
                         )
 
     def cast_ray(self,
-            ray_from: Vector2,
-            ray_to: Vector2,
-            max_results: int = 512
+            ray_from: Coordinate,
+            ray_to: Coordinate,
+            max_results: int = 512,
+            filter: CollisionFilter = CollisionFilter()
             ) -> list[RayCastResult]:
-        from_ = ray_from.to_tuple()
-        to_ = ray_to.to_tuple()
+        from_ = Vector2(ray_from).to_tuple()
+        to_ = Vector2(ray_to).to_tuple()
 
-        results_ = ffi.new(f"nvRayCastResult[{max_results}]")
-        num_hits_ = ffi.new("size_t *")
-
-        lib.nvSpace_cast_ray(
-            self._space, from_, to_, results_, num_hits_, max_results
+        results_ref = lib.nvSpace_cast_ray(
+            self._space, from_, to_, max_results, filter.as_c_type()
         )
 
-        num_hits = int(num_hits_[0])
+        if not lib.nvArray_valid(results_ref):
+            raise NovaError(get_error_buffer())
+
         results = []
 
-        for i in range(num_hits):
-            result = results_[i]
+        for i in range(results_ref.size):
+            result = results_ref.data[i * results_ref.element_size]
             body = self._get_body_by_pointer(result.body)
             shape = body._get_shape_by_pointer(result.shape)
 
@@ -269,8 +308,94 @@ class Space:
                 shape
             ))
 
+        lib.nvArray_free(results_ref)
+
         return results
-    
+
+    def query_point(self,
+            point: Coordinate,
+            filter: CollisionFilter = CollisionFilter(),
+            cheap: bool = False
+            ) -> list[RigidBody]:
+        point = Vector2(point).to_tuple()
+
+        results_ref = lib.nvSpace_query_point(
+            self._space, point, filter.as_c_type(), cheap
+        )
+
+        if not lib.nvRefArray_valid(results_ref):
+            raise NovaError(get_error_buffer())
+
+        results = []
+
+        for i in range(results_ref.size):
+            result = results_ref.data[i]
+            body = self._get_body_by_pointer(result)
+
+            results.append(body)
+
+        lib.nvRefArray_free(results_ref)
+
+        return results
+
+    def set_contact_callback(self,
+            func: ContactEventCallback,
+            type: ContactEventType,
+            user_arg: Any | None = None
+            ) -> None:
+        self._listener_arg = user_arg
+        self._listener_arg_handle = ffi.new_handle(self._listener_arg )
+        self._space.listener_arg = self._listener_arg_handle
+
+        # All of these arguments are <cdata>, I don't know how to typehint them
+        def decorator(c_space, c_event, c_user_arg) -> None:
+            # First, validate pointers
+
+            if c_space != self._space:
+                raise ValueError(f"Listener space and caller space is not the same. {self._space} != {c_space}.")
+
+            user_arg = ffi.from_handle(c_user_arg)
+            if (user_arg is not self._listener_arg):
+                raise ValueError(f"Given user argument and caller user argument is not the same. {id(self._listener_arg)} != {id(user_arg)}")
+
+            # Then retrieve event fields
+
+            body_a = self._get_body_by_pointer(c_event.body_a)
+            body_b = self._get_body_by_pointer(c_event.body_b)
+            event = ContactEvent(
+                body_a,
+                body_b,
+                body_a._get_shape_by_pointer(c_event.shape_a),
+                body_b._get_shape_by_pointer(c_event.shape_b),
+                Vector2(c_event.normal.x, c_event.normal.y),
+                c_event.penetration,
+                Vector2(c_event.position.x, c_event.position.y),
+                Vector2(c_event.normal_impulse.x, c_event.normal_impulse.y),
+                Vector2(c_event.friction_impulse.x, c_event.friction_impulse.y),
+                c_event.id
+            )
+
+            func(self, event, user_arg)
+
+        c_callback = ffi.callback("nvContactListenerCallback", decorator)
+
+        if type == ContactEventType.ADDED:
+            self._space.listener.on_contact_added = c_callback
+            self._on_added_callback = c_callback
+
+        elif type == ContactEventType.PERSISTED:
+            self._space.listener.on_contact_persisted = c_callback
+            self._on_persisted_callback = c_callback
+
+        elif type == ContactEventType.REMOVED:
+            self._space.listener.on_contact_removed = c_callback
+            self._on_removed_callback = c_callback
+
+        else:
+            raise ValueError(f"Unknown contact event type {type}")
+
+        return decorator
+
     def total_memory_used(self) -> int:
         """ Get the total amount of memory used by this space instance in bytes. """
         return lib.nvSpace_total_memory_used(self._space)
