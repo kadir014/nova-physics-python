@@ -20,6 +20,7 @@ novaphysics_cdef.h
 test_*.py
 dist/
 *.egg-info/
+uv.lock
 
 # Prerequisites
 *.d
