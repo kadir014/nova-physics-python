@@ -132,3 +132,44 @@ class PygameExample:
 
     def render(self) -> None:
         ...
+
+
+def draw_spring(
+        surface: pygame.Surface,
+        color: pygame.typing.ColorLike,
+        start: pygame.typing.Point,
+        end: pygame.typing.Point,
+        rest_length: float,
+        width: int = 1
+        ) -> None:
+    start = pygame.Vector2(start)
+    end = pygame.Vector2(end)
+
+    delta = end - start
+    length = delta.length()
+
+    if length < 0.0001 or length > 1000.0:
+        return
+
+    direction = delta.normalize()
+    normal = pygame.Vector2(-direction.y, direction.x)
+
+    # Number of zigzag segments
+    segments = max(2, round(rest_length / 10))
+
+    # Scale amplitude based on compression/stretch with magic numbers ;)
+    amplitude = min(rest_length * 0.08, length * 0.12)
+
+    # Spring endpoints should remain on the original line!
+    points = [start,]
+    for i in range(1, segments):
+        t = i / segments
+
+        # Alternate for zigzag
+        offset = amplitude * (1 if i % 2 else -1)
+
+        point = start + direction * (length * t) + normal * offset
+        points.append(point)
+    points.append(end)
+
+    pygame.draw.lines(surface, color, False, points, width)
