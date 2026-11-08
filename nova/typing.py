@@ -8,15 +8,29 @@
 
 """
 
-from typing import Callable, TypeVar, Type, Any, TYPE_CHECKING
+from typing import (
+    Callable,
+    TypeVar,
+    Type,
+    Any,
+    TypeAliasType,
+    Union,
+    ForwardRef,
+    get_args,
+    get_origin,
+    TYPE_CHECKING
+)
+from types import UnionType
 from collections.abc import Iterable
+import inspect
 
 from nova.vector import Vector2
-from nova.constraint import Constraint
 
 if TYPE_CHECKING:
     from nova.models import VisitorAuxiliary, ContactEvent
     from nova.space import Space
+    from nova.body import RigidBody
+    from nova.constraint import Constraint
 
 
 EnforcedT = TypeVar("T")
@@ -38,6 +52,34 @@ def enforce(
         Expected argument type
     """
 
+    # Caller's module namespace
+    caller_frame = inspect.currentframe().f_back
+    caller_globals = caller_frame.f_globals
+    caller_locals = caller_frame.f_locals
+
+    if isinstance(expected_type, TypeAliasType):
+        expected_type = expected_type.__value__
+
+    if get_origin(expected_type) in {Union, UnionType}:
+        resolved_types = []
+
+        for t in get_args(expected_type):
+            if isinstance(t, ForwardRef):
+                t = t.evaluate(
+                    globals=caller_globals,
+                    locals=caller_locals
+                )
+
+            resolved_types.append(t)
+
+        expected_type = tuple(resolved_types)
+
+    elif isinstance(expected_type, ForwardRef):
+        expected_type = expected_type.evaluate(
+            globals=caller_globals,
+            locals=caller_locals
+        )
+
     if not isinstance(value, expected_type):
         raise TypeError(
             f"Argument '{name}' must be {expected_type.__name__}, "
@@ -47,11 +89,12 @@ def enforce(
     return value
 
 
-Coordinate = Vector2 | tuple[float, float] | Iterable[float]
+type Coordinate = Vector2 | tuple[float, float] | Iterable[float]
 
-ConstraintT = TypeVar("ConstraintT", bound=Constraint)
+ConstraintT = TypeVar("ConstraintT", bound="Constraint")
+type ConstraintTarget = Union["RigidBody", None]
 
-ContactEventCallback = Callable[["Space", "ContactEvent", Any], None]
+type ContactEventCallback = Callable[["Space", "ContactEvent", Any], None]
 
-PolygonVisitorCallback = Callable[[list[Vector2], "VisitorAuxiliary"], None]
-CircleVisitorCallback = Callable[[Vector2, float, "VisitorAuxiliary"], None]
+type PolygonVisitorCallback = Callable[[list[Vector2], "VisitorAuxiliary"], None]
+type CircleVisitorCallback = Callable[[Vector2, float, "VisitorAuxiliary"], None]

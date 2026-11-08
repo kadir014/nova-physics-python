@@ -10,7 +10,7 @@
 
 
 __version_major__ = 0
-__version_minor__ = 3
+__version_minor__ = 4
 __version_patch__ = 0
 __version__ = f"{__version_major__}.{__version_minor__}.{__version_patch__}"
 
@@ -24,11 +24,11 @@ from nova.shape import Shape, Circle, Polygon, ShapeFactory
 from nova.constraint import Constraint, DistanceConstraint, HingeConstraint
 from nova.space import Space
 from nova.models import (
-    BroadPhaseAlgorithm,
     ShapeType,
     RigidBodyType,
     AABB,
     VisitorAuxiliary,
+    RayCastResult,
     ContactEventType,
     ContactEvent,
     Material
@@ -52,11 +52,11 @@ __all__ = (
     "DistanceConstraint",
     "HingeConstraint",
     "Space",
-    "BroadPhaseAlgorithm",
     "ShapeType",
     "RigidBodyType",
     "AABB",
     "VisitorAuxiliary",
+    "RayCastResult",
     "ContactEventType",
     "ContactEvent",
     "Material",

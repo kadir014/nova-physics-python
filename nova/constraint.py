@@ -10,13 +10,16 @@
 
 from typing import TYPE_CHECKING
 
+from math import pi
+
 from nova.common import lib, ffi, get_error_buffer
+from nova.typing import Coordinate, ConstraintTarget, enforce
 from nova.error import NovaError
 from nova.vector import Vector2
+from nova.body import RigidBody # For type enforcer
 
 if TYPE_CHECKING:
     from nova.space import Space
-    from nova.body import RigidBody
 
 
 class Constraint:
@@ -28,8 +31,15 @@ class Constraint:
         # it is to access Python representations by pointers
         self._space: "Space | None" = None
 
+    def __del__(self) -> None:
+        # No memory in C has been allocated yet
+        if not hasattr(self, "_refd"): return
+        if self._refd: return
+
+        lib.nvConstraint_free(self._cons)
+
     @property
-    def body_a(self) -> "RigidBody | None":
+    def body_a(self) -> ConstraintTarget:
         if self._space is None:
             return None
         
@@ -37,37 +47,54 @@ class Constraint:
         return self._space._get_body_by_pointer(cbody)
     
     @property
-    def body_b(self) -> "RigidBody | None":
+    def body_b(self) -> ConstraintTarget:
         if self._space is None:
             return None
         
         cbody = self._cons.b
         return self._space._get_body_by_pointer(cbody)
 
-    def __del__(self) -> None:
-        if self._refd: return
-        lib.nvConstraint_free(self._cons)
+    @property
+    def ignore_collision(self) -> bool:
+        return lib.nvConstraint_get_ignore_collision(self._cons)
+
+    @ignore_collision.setter
+    def ignore_collision(self, ignore_collision: bool) -> None:
+        if lib.nvConstraint_set_ignore_collision(self._cons, ignore_collision):
+            raise NovaError(get_error_buffer())
 
 
 class DistanceConstraint(Constraint):
     def __init__(
             self,
-            body_a: "RigidBody | None",
-            body_b: "RigidBody | None",
+            body_a: ConstraintTarget,
+            body_b: ConstraintTarget,
             length: float,
-            anchor_a: Vector2 = Vector2(0.0, 0.0),
-            anchor_b: Vector2 = Vector2(0.0, 0.0),
-            spring: bool = False,
+            anchor_a: Coordinate = Vector2(0.0, 0.0),
+            anchor_b: Coordinate = Vector2(0.0, 0.0),
+            soft: bool = False,
             hertz: float = 3.0,
             damping: float = 0.3
         ) -> None:
+        enforce("body_a", body_a, ConstraintTarget)
+        enforce("body_b", body_b, ConstraintTarget)
+        enforce("length", length, float)
+        enforce("anchor_a", anchor_a, Coordinate)
+        enforce("anchor_b", anchor_b, Coordinate)
+        enforce("soft", soft, bool)
+        enforce("hertz", hertz, float)
+        enforce("damping", damping, float)
+
+        anchor_a = Vector2(anchor_a)
+        anchor_b = Vector2(anchor_b)
+
         init = lib.nvDistanceConstraintInitializer_default
         init.a = body_a._rigidbody if body_a is not None else ffi.NULL
         init.b = body_b._rigidbody if body_b is not None else ffi.NULL
         init.length = length
         init.anchor_a = anchor_a.to_tuple()
         init.anchor_b = anchor_b.to_tuple()
-        init.spring = spring
+        init.soft = soft
         init.hertz = hertz
         init.damping = damping
 
@@ -114,12 +141,12 @@ class DistanceConstraint(Constraint):
         lib.nvDistanceConstraint_set_max_force(self._cons, max_force)
 
     @property
-    def is_spring(self) -> bool:
-        return lib.nvDistanceConstraint_get_spring(self._cons)
+    def soft(self) -> bool:
+        return lib.nvDistanceConstraint_get_soft(self._cons)
     
-    @is_spring.setter
-    def is_spring(self, is_spring: bool) -> None:
-        lib.nvDistanceConstraint_set_spring(self._cons, is_spring)
+    @soft.setter
+    def soft(self, soft: bool) -> None:
+        lib.nvDistanceConstraint_set_soft(self._cons, soft)
 
     @property
     def hertz(self) -> float:
@@ -141,17 +168,29 @@ class DistanceConstraint(Constraint):
 class HingeConstraint(Constraint):
     def __init__(
             self,
-            body_a: "RigidBody | None",
-            body_b: "RigidBody | None",
-            anchor: Vector2,
-            enable_limits: bool = False
+            body_a: ConstraintTarget,
+            body_b: ConstraintTarget,
+            anchor: Coordinate,
+            enable_limits: bool = False,
+            upper_limit: float = pi * 0.5,
+            lower_limit: float = pi * -0.5
         ) -> None:
+        enforce("body_a", body_a, ConstraintTarget)
+        enforce("body_b", body_b, ConstraintTarget)
+        enforce("anchor", anchor, Coordinate)
+        enforce("enable_limits", enable_limits, bool)
+        enforce("upper_limit", upper_limit, float)
+        enforce("lower_limit", lower_limit, float)
+
+        anchor = Vector2(anchor)
 
         init = lib.nvHingeConstraintInitializer_default
         init.a = body_a._rigidbody if body_a is not None else ffi.NULL
         init.b = body_b._rigidbody if body_b is not None else ffi.NULL
         init.anchor = anchor.to_tuple()
         init.enable_limits = enable_limits
+        init.upper_limit = upper_limit
+        init.lower_limit = lower_limit
         ccons = lib.nvHingeConstraint_new(init)
 
         super().__init__(ccons)
@@ -167,6 +206,34 @@ class HingeConstraint(Constraint):
     @anchor.setter
     def anchor(self, anchor: Vector2) -> None:
         lib.nvHingeConstraint_set_anchor(self._cons, anchor.to_tuple())
+
+    @property
+    def xanchor_a(self) -> Vector2:
+        """
+        Anchor point local to body A, transformed into world space.
+        """
+
+        hinge = getattr(self._cons, "def")
+        hinge = ffi.cast("nvHingeConstraint *", hinge)
+
+        xanchor = Vector2(hinge.xanchor_a.x, hinge.xanchor_a.y)
+        xanchor += self.body_a.position
+
+        return xanchor
+
+    @property
+    def xanchor_b(self) -> Vector2:
+        """
+        Anchor point local to body B, transformed into world space.
+        """
+
+        hinge = getattr(self._cons, "def")
+        hinge = ffi.cast("nvHingeConstraint *", hinge)
+
+        xanchor = Vector2(hinge.xanchor_b.x, hinge.xanchor_b.y)
+        xanchor += self.body_b.position
+
+        return xanchor
 
     @property
     def enable_limits(self) -> bool:

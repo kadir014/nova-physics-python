@@ -22,7 +22,6 @@ from nova.typing import (
 from nova.error import NovaError, DuplicateError
 from nova.models import (
     Profiler,
-    BroadPhaseAlgorithm,
     RayCastResult,
     VisitorAuxiliary,
     ShapeType,
@@ -151,6 +150,19 @@ class Space:
                 return cons
         return None
 
+    def clear(self, shrink: bool = True) -> None:
+        for body in self._body_ref:
+            body._refd = False
+
+        for cons in self._cons_ref:
+            cons._refd = False
+            cons._space = None
+
+        self._body_ref.clear()
+        self._cons_ref.clear()
+
+        lib.nvSpace_clear(self._space, False, shrink)
+
     def add_rigidbody(self, body: "RigidBody") -> None:
         body._refd = True
         ret = lib.nvSpace_add_rigidbody(self._space, body._rigidbody)
@@ -172,7 +184,8 @@ class Space:
 
         body._refd = False
 
-        ret = lib.nvSpace_remove_rigidbody(self._space, body._rigidbody)
+        # TODO: free_resources?
+        ret = lib.nvSpace_remove_rigidbody(self._space, body._rigidbody, False)
         if ret:
             raise NovaError(get_error_buffer())
 
@@ -296,8 +309,10 @@ class Space:
 
         results = []
 
+        casted_data = ffi.cast("nvRayCastResult *", results_ref.data)
         for i in range(results_ref.size):
-            result = results_ref.data[i * results_ref.element_size]
+            result = casted_data[i]
+
             body = self._get_body_by_pointer(result.body)
             shape = body._get_shape_by_pointer(result.shape)
 
@@ -415,16 +430,6 @@ class Space:
     @property
     def num_constraints(self) -> int:
         return self._space.constraints.size
-
-    @property
-    def broadphase(self) -> BroadPhaseAlgorithm:
-        bph = lib.nvSpace_get_broadphase(self._space)
-        return BroadPhaseAlgorithm(bph)
-    
-    @broadphase.setter
-    def broadphase(self, broadphase_algorithm: BroadPhaseAlgorithm) -> None:
-        if lib.nvSpace_set_broadphase(self._space, broadphase_algorithm.value):
-            raise NovaError(get_error_buffer())
         
     @property
     def gravity(self) -> Vector2:

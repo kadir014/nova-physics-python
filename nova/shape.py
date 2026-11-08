@@ -119,7 +119,7 @@ class Polygon(Shape):
 
         offset = (Vector2(offset[0]), offset[1])
 
-        origin = body._rigidbody.origin
+        origin = body.local_transform[0]
         new_xform = (
             (origin.x + offset[0].x, origin.y + offset[0].y),
             body.angle + offset[1]
@@ -131,8 +131,6 @@ class Polygon(Shape):
 class Circle(Shape):
     def __init__(self, cshape) -> None:
         super().__init__(cshape)
-
-        self.__transformed_center = Vector2(-1, -1)
 
     @property
     def radius(self) -> float:
@@ -154,7 +152,8 @@ class Circle(Shape):
         You need to call `transform` method before accessing this property.
         """
 
-        return self.__transformed_center
+        xc = self._shape.circle.xcenter
+        return Vector2(xc.x, xc.y)
 
     def transform(self,
             body: "RigidBody",
@@ -173,6 +172,11 @@ class Circle(Shape):
             Optional relative transform (pair of position and rotation).
         """
 
+        if self._shape.xform_cache:
+            return
+
+        self._shape.xform_cache = True
+
         if offset is None:
             offset = (Vector2(), 0.0)
 
@@ -181,12 +185,12 @@ class Circle(Shape):
         center = Vector2(self._shape.circle.center.x, self._shape.circle.center.y)
         center = center.rotate(body.angle + offset[1])
 
-        center.x += body._rigidbody.origin.x
-        center.y += body._rigidbody.origin.y
+        center += body.local_transform[0]
 
         center += offset[0]
 
-        self.__transformed_center = center
+        self._shape.circle.xcenter.x = center.x
+        self._shape.circle.xcenter.y = center.y
 
 
 class ShapeFactory:

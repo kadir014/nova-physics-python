@@ -23,7 +23,7 @@ INCLUDE_PATH = NOVA_PATH / "include"
 HEADER_PATH = INCLUDE_PATH / "novaphysics"
 
 MSVC_COMPILER_ARGS = (
-    "/arch:AVX2",
+    #"/arch:AVX2",
     "/D_CRT_SECURE_NO_WARNINGS",
     "/DNV_ENABLE_PROFILER",
 )
@@ -75,6 +75,10 @@ def ordered_headers() -> list[Path]:
 
 def header_cdef(path: Path) -> str:
     """ Generate cdef for one header. """
+
+    print(
+        f"    [_cffi_gen.py] Parsing header {path.name}"
+    )
 
     source = read_header(path)
     if path.name == "types.h":
@@ -151,7 +155,7 @@ cdef_source = generate_cdef(headers)
 # Includes put the original inline implementations in the generated C module.
 # No need to copy the bodies header guards already prevent duplicate definitions
 ffi_sources = "\n".join(
-    f'#include "{path.relative_to(INCLUDE_PATH).as_posix()}"' for path in headers
+    f"#include \"{path.relative_to(INCLUDE_PATH).as_posix()}\"" for path in headers
 )
 
 
@@ -159,7 +163,7 @@ print(
     "    \n"
     "    nova/_cffi_gen.py:\n"
     "    =========================================\n"
-    "    Parsing & building the cdef header.\n"
+    "    Building the cdef header.\n"
     "    =========================================\n"
     "    \n"
 )

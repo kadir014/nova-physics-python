@@ -22,11 +22,6 @@ if TYPE_CHECKING:
     from nova.shape import Shape
 
 
-class BroadPhaseAlgorithm(Enum):
-    BRUTE_FORCE = 0
-    BVH = 1
-
-
 class ShapeType(Enum):
     CIRCLE = 0
     POLYGON = 1

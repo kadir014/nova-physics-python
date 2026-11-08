@@ -14,7 +14,7 @@ from collections.abc import Iterator
 from nova.common import lib, ffi, get_error_buffer
 from nova.typing import Coordinate, enforce
 from nova.error import NovaError
-from nova.models import RigidBodyType, Material, AABB
+from nova.models import RigidBodyType, Material, AABB, CollisionFilter
 from nova.vector import Vector2
 
 if TYPE_CHECKING:
@@ -31,12 +31,12 @@ class RigidBody:
             angular_velocity: float = 0.0,
             material: Material = Material()
         ) -> None:
-        type = enforce("type", type, RigidBodyType)
-        position = enforce("position", position, Coordinate)
-        angle = enforce("angle", angle, float)
-        linear_velocity = enforce("linear_velocity", linear_velocity, Coordinate)
-        angular_velocity = enforce("angular_velocity", angular_velocity, float)
-        material = enforce("material", material, Material)
+        enforce("type", type, RigidBodyType)
+        enforce("position", position, Coordinate)
+        enforce("angle", angle, float)
+        enforce("linear_velocity", linear_velocity, Coordinate)
+        enforce("angular_velocity", angular_velocity, float)
+        enforce("material", material, Material)
 
         position = Vector2(position)
         linear_velocity = Vector2(linear_velocity)
@@ -94,8 +94,18 @@ class RigidBody:
         force = Vector2(force)
         lib.nvRigidBody_apply_force(self._rigidbody, force.to_tuple())
 
+    def apply_force_at(self, force: Coordinate, position: Coordinate) -> None:
+        force = Vector2(force)
+        position = Vector2(position)
+        lib.nvRigidBody_apply_force_at(
+            self._rigidbody, force.to_tuple(), position.to_tuple()
+        )
+
     def apply_torque(self, torque: float) -> None:
         lib.nvRigidBody_apply_torque(self._rigidbody, torque)
+
+    def reset_velocities(self) -> None:
+        lib.nvRigidBody_reset_velocities(self._rigidbody)
 
     @property
     def type(self) -> RigidBodyType:
@@ -111,9 +121,31 @@ class RigidBody:
             raise NovaError(get_error_buffer())
 
     @property
+    def mass(self) -> float:
+        return lib.nvRigidBody_get_mass(self._rigidbody)
+
+    @mass.setter
+    def mass(self, mass: float) -> None:
+       if lib.nvRigidBody_set_mass(self._rigidbody, mass):
+           raise NovaError(get_error_buffer())
+
+    @property
+    def inertia(self) -> float:
+        return lib.nvRigidBody_get_inertia(self._rigidbody)
+    
+    @inertia.setter
+    def inertia(self, inertia: float) -> None:
+        lib.nvRigidBody_set_inertia(self._rigidbody, inertia)
+
+    @property
     def aabb(self) -> AABB:
         aabb = lib.nvRigidBody_get_aabb(self._rigidbody)
         return AABB(aabb.min_x, aabb.min_y, aabb.max_x, aabb.max_y)
+
+    @property
+    def local_transform(self) -> tuple[Vector2, float]:
+        xform = lib.nvRigidBody_get_local_transform(self._rigidbody)
+        return (Vector2(xform.position.x, xform.position.y), xform.angle)
 
     @property
     def position(self) -> Vector2:
@@ -166,17 +198,40 @@ class RigidBody:
         lib.nvRigidBody_set_angular_damping_scale(self._rigidbody, angular_damping_scale)
 
     @property
-    def inertia(self) -> float:
-        return lib.nvRigidBody_get_inertia(self._rigidbody)
-    
-    @inertia.setter
-    def inertia(self, inertia: float) -> None:
-        lib.nvRigidBody_set_inertia(self._rigidbody, inertia)
-
-    @property
     def gravity_scale(self) -> float:
         return lib.nvRigidBody_get_gravity_scale(self._rigidbody)
 
     @gravity_scale.setter
     def gravity_scale(self, gravity_scale: float) -> None:
         lib.nvRigidBody_set_gravity_scale(self._rigidbody, gravity_scale)
+
+    @property
+    def kinetic_energy(self) -> float:
+        return lib.nvRigidBody_get_kinetic_energy(self._rigidbody)
+
+    @property
+    def rotational_energy(self) -> float:
+        return lib.nvRigidBody_get_rotational_energy(self._rigidbody)
+
+    @property
+    def collision_filter(self) -> CollisionFilter:
+        """
+        Returns a copy of the collision filter.
+        
+        Mutating the returned object does not change this body’s filter.
+        Assign the updated filter back to apply changes.
+        """
+        f = lib.nvRigidBody_get_collision_filter(self._rigidbody)
+        return CollisionFilter(
+            enabled=f.enabled,
+            group=f.group,
+            category=f.category,
+            mask=f.mask
+        )
+
+    @collision_filter.setter
+    def collision_filter(self, collision_filter: CollisionFilter) -> None:
+        lib.nvRigidBody_set_collision_filter(
+            self._rigidbody,
+            collision_filter.as_c_type()
+        )
