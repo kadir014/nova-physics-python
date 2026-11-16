@@ -173,6 +173,9 @@ class Space:
         self._body_ref.append(body)
 
     def remove_rigidbody(self, body: "RigidBody") -> None:
+        if body not in self._body_ref:
+            raise ValueError(f"{body} is already not inside space.")
+
         # Remove constraints before altering body in any way
         to_be_removed = []
         for c in self._cons_ref:
@@ -377,6 +380,12 @@ class Space:
 
             body_a = self._get_body_by_pointer(c_event.body_a)
             body_b = self._get_body_by_pointer(c_event.body_b)
+
+            # Skip if bodies are not found even if pointers are valid
+            # TODO: Maybe raise an exception?
+            if body_a is None or body_b is None:
+                return
+
             event = ContactEvent(
                 body_a,
                 body_b,
