@@ -199,10 +199,10 @@ class ContactEvent:
         Contact feature ID. 
     """
 
-    body_a: RigidBody
-    body_b: RigidBody
-    shape_a: Shape
-    shape_b: Shape
+    body_a: "RigidBody"
+    body_b: "RigidBody"
+    shape_a: "Shape"
+    shape_b: "Shape"
     normal: Vector2
     penetration: float
     position: Vector2

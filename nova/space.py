@@ -98,7 +98,7 @@ class SpaceSettings:
 class Space:
     def __init__(self) -> None:
         self._space = lib.nvSpace_new()
-        self._body_ref: list[RigidBody] = [] # To keep bodies from GC'd
+        self._body_ref: list["RigidBody"] = [] # To keep bodies from GC'd
         self._cons_ref: list[Type["ConstraintT"]] = []
 
         if self._space == ffi.NULL:
@@ -334,7 +334,7 @@ class Space:
             point: Coordinate,
             filter: CollisionFilter = CollisionFilter(),
             cheap: bool = False
-            ) -> list[RigidBody]:
+            ) -> list["RigidBody"]:
         point = Vector2(point).to_tuple()
 
         results_ref = lib.nvSpace_query_point(
