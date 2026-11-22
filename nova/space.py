@@ -232,9 +232,9 @@ class Space:
 
         lib.nvSpace_step(self._space, dt)
 
-        for callback_type, event in list(self._callback_exception.items()):
+        for callback_type, exception in list(self._callback_exception.items()):
             del self._callback_exception[callback_type]
-            raise event
+            raise exception
 
         self._profiler.step = self._space.profiler.step
         self._profiler.broadphase = self._space.profiler.broadphase
