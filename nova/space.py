@@ -126,7 +126,7 @@ class Space:
         self._listener_arg_handle = None
         self._listener_arg = None
 
-        self._callback_exception = None
+        self._callback_exception = {}
 
     def __del__(self) -> None:
 
@@ -232,6 +232,10 @@ class Space:
 
         lib.nvSpace_step(self._space, dt)
 
+        for callback_type, event in list(self._callback_exception.items()):
+            del self._callback_exception[callback_type]
+            raise event
+
         self._profiler.step = self._space.profiler.step
         self._profiler.broadphase = self._space.profiler.broadphase
         self._profiler.broadphase_finalize = self._space.profiler.broadphase_finalize
@@ -243,9 +247,6 @@ class Space:
         self._profiler.warmstart = self._space.profiler.warmstart
         self._profiler.solve_velocities = self._space.profiler.solve_velocities
         self._profiler.integrate_velocities = self._space.profiler.integrate_velocities
-
-        if self._callback_exception:
-            raise self._callback_exception
 
     def visitor(self,
             type: "ShapeType"
@@ -407,7 +408,7 @@ class Space:
             try:
                 func(self, event, user_arg)
             except Exception as e:
-                self._callback_exception = e
+                self._callback_exception[type] = e
 
         c_callback = ffi.callback("nvContactListenerCallback", decorator)
 
