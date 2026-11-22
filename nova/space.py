@@ -126,6 +126,8 @@ class Space:
         self._listener_arg_handle = None
         self._listener_arg = None
 
+        self._callback_exception = None
+
     def __del__(self) -> None:
 
         # TODO: nvSpace_free is going to free all bodies and shapes?
@@ -241,6 +243,9 @@ class Space:
         self._profiler.warmstart = self._space.profiler.warmstart
         self._profiler.solve_velocities = self._space.profiler.solve_velocities
         self._profiler.integrate_velocities = self._space.profiler.integrate_velocities
+
+        if self._callback_exception:
+            raise self._callback_exception
 
     def visitor(self,
             type: "ShapeType"
@@ -399,7 +404,10 @@ class Space:
                 c_event.id
             )
 
-            func(self, event, user_arg)
+            try:
+                func(self, event, user_arg)
+            except Exception as e:
+                self._callback_exception = e
 
         c_callback = ffi.callback("nvContactListenerCallback", decorator)
 
