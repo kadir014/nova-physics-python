@@ -126,6 +126,8 @@ class Space:
         self._listener_arg_handle = None
         self._listener_arg = None
 
+        self._callback_exception = {}
+
     def __del__(self) -> None:
 
         # TODO: nvSpace_free is going to free all bodies and shapes?
@@ -229,6 +231,10 @@ class Space:
         self._profiler.queries = self._space.profiler.queries
 
         lib.nvSpace_step(self._space, dt)
+
+        for callback_type, exception in list(self._callback_exception.items()):
+            del self._callback_exception[callback_type]
+            raise exception
 
         self._profiler.step = self._space.profiler.step
         self._profiler.broadphase = self._space.profiler.broadphase
@@ -399,7 +405,10 @@ class Space:
                 c_event.id
             )
 
-            func(self, event, user_arg)
+            try:
+                func(self, event, user_arg)
+            except Exception as e:
+                self._callback_exception[type] = e
 
         c_callback = ffi.callback("nvContactListenerCallback", decorator)
 
